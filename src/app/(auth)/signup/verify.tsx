@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ const OTP_LENGTH = 4;
 const DEMO_OTP = '1234';
 
 export default function VerifyScreen() {
-    const router = useRouter();
     const { email } = useLocalSearchParams<{ email: string }>();
 
     // OTP state

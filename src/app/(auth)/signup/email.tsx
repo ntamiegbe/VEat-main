@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { View, SafeAreaView, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, SafeAreaView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
-import Button from '@/components/global/button';
 
 export default function EmailSignUpScreen() {
-    const router = useRouter();
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isValidEmail, setIsValidEmail] = useState(true);
@@ -91,15 +89,20 @@ export default function EmailSignUpScreen() {
                     )}
                 </View>
 
-                <Button
-                    variant="primary"
-                    size="md"
+                <TouchableOpacity
+                    style={[
+                        styles.continueButton,
+                        (!email || !isValidEmail || isLoading) && styles.disabledButton
+                    ]}
                     onPress={handleContinue}
                     disabled={!email || !isValidEmail || isLoading}
-                    isLoading={isLoading}
                 >
-                    Continue
-                </Button>
+                    {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                        <Text weight="medium" style={styles.buttonText}>Continue</Text>
+                    )}
+                </TouchableOpacity>
 
                 <View style={styles.dividerContainer}>
                     <View style={styles.divider} />
@@ -107,14 +110,13 @@ export default function EmailSignUpScreen() {
                     <View style={styles.divider} />
                 </View>
 
-                <Button
-                    variant="outline"
-                    size="md"
+                <TouchableOpacity
+                    style={styles.googleButton}
                     onPress={handleGoogleSignUp}
-                    icon={<Ionicons name="logo-google" size={24} color="#4285F4" />}
                 >
-                    Continue with Google
-                </Button>
+                    <Ionicons name="logo-google" size={24} color="#4285F4" style={styles.googleIcon} />
+                    <Text weight="medium" style={styles.googleButtonText}>Continue with Google</Text>
+                </TouchableOpacity>
 
                 <View style={styles.footer}>
                     <Text weight="regular" style={styles.footerText}>
@@ -165,6 +167,21 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginTop: 8,
     },
+    continueButton: {
+        height: 56,
+        backgroundColor: '#008751',
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 32,
+    },
+    disabledButton: {
+        backgroundColor: '#CCCCCC',
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: 16,
+    },
     dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -180,8 +197,22 @@ const styles = StyleSheet.create({
         color: '#888888',
         fontSize: 14,
     },
+    googleButton: {
+        height: 56,
+        flexDirection: 'row',
+        borderWidth: 1,
+        borderColor: '#E5E5E5',
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
     googleIcon: {
         marginRight: 8,
+    },
+    googleButtonText: {
+        color: '#333333',
+        fontSize: 16,
     },
     footer: {
         marginTop: 16,

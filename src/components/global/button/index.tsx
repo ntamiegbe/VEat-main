@@ -1,6 +1,6 @@
 /* eslint-disable max-lines-per-function */
 import React, { useEffect } from 'react';
-import { LogBox, Text, View } from 'react-native';
+import { LogBox, Text, View, ActivityIndicator } from 'react-native';
 import { TouchableRipple } from 'react-native-paper';
 
 import { cn } from '@/core/utils';
@@ -34,11 +34,11 @@ const Button = ({
   const getButtonStyle = (): string => {
     switch (variant) {
       case 'primary':
-        return 'bg-[#D97706] dark:bg-accent-yellow-600';
+        return 'bg-primary-main disabled:bg-background-disabled';
       case 'secondary':
         return 'bg-secondary-orange';
       case 'outline':
-        return 'bg-transparent border border-[#D97706] dark:border-accent-yellow-600';
+        return 'bg-transparent border border-primary-main dark:border-accent-yellow-600';
       case 'plain':
         return 'bg-transparent';
       default:
@@ -49,11 +49,11 @@ const Button = ({
   const getButtonTextStyle = (): string => {
     switch (variant) {
       case 'primary':
-        return 'text-shades-black-100';
+        return 'text-white disabled:text-secondary-caption';
       case 'secondary':
         return 'dark:text-accent-yellow-600';
       case 'outline':
-        return 'text-[#D97706] dark:text-accent-yellow-600';
+        return 'text-primary-main dark:text-accent-yellow-600';
       case 'plain':
         return 'text-black';
       default:
@@ -64,13 +64,29 @@ const Button = ({
   const getButtonSize = (): string => {
     switch (size) {
       case 'sm':
-        return 'py-2 px-2 rounded h-10 rounded';
+        return 'py-2 px-2 rounded h-10 rounded-full';
       case 'md':
-        return 'py-4 px-5 h-12 rounded';
+        return 'py-4 px-5 h-12 rounded-full';
       case 'lg':
-        return 'py-6 px-6 rounded';
+        return 'py-6 px-6 h-14 rounded-full';
       default:
-        return 'py-4 px-5 rounded';
+        return 'py-[16px] px-[12px] rounded-full';
+    }
+  };
+
+  // Get appropriate spinner color based on button variant
+  const getSpinnerColor = (): string => {
+    switch (variant) {
+      case 'primary':
+        return '#FFFFFF';
+      case 'secondary':
+        return '#D97706';
+      case 'outline':
+        return '#D97706';
+      case 'plain':
+        return '#000000';
+      default:
+        return '#FFFFFF';
     }
   };
 
@@ -95,17 +111,21 @@ const Button = ({
         disabled={isLoading || disabled}
       >
         <View className="flex flex-row items-center justify-center gap-x-2">
-          {icon && icon}
-          <Text
-            className={cn(
-              'text-center text-base leading-4 font-Lato font-bold',
-              getButtonTextStyle(),
-              ButtonTextStyle
-            )}
-          >
-            {children}
-          </Text>
-          {iconLeft && iconLeft}
+          {icon && !isLoading && icon}
+          {isLoading ? (
+            <ActivityIndicator size="small" color={getSpinnerColor()} />
+          ) : (
+            <Text
+              className={cn(
+                'text-center text-base leading-4 font-bold',
+                getButtonTextStyle(),
+                ButtonTextStyle
+              )}
+            >
+              {children}
+            </Text>
+          )}
+          {iconLeft && !isLoading && iconLeft}
         </View>
       </TouchableRipple>
       {/* <LoadingModal isVisible={isLoading} /> */}

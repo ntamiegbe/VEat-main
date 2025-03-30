@@ -1,12 +1,11 @@
 import { View, TouchableOpacity, Image, SafeAreaView, StyleSheet } from 'react-native'
 import React from 'react'
 import { MotiView } from 'moti'
-import { useRouter } from 'expo-router'
+import { router } from 'expo-router'
 import { useAuth } from '@/providers/AuthProvider'
 import Text from '@/components/ui/Text'
 
 export default function IntroScreen() {
-    const router = useRouter()
     const { isLoading } = useAuth()
 
     // Navigate to login screen

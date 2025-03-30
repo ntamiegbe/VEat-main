@@ -11,14 +11,13 @@ import {
     Modal,
     StyleSheet
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 export default function ProfileScreen() {
-    const router = useRouter();
     const { email } = useLocalSearchParams();
 
     // Form state
