@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, Image, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, SafeAreaView, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
-import { typography } from '@/utils/typography';
 import { Ionicons } from '@expo/vector-icons';
+import Button from '@/components/global/button';
 
 export default function EmailSignUpScreen() {
     const router = useRouter();
@@ -60,7 +60,10 @@ export default function EmailSignUpScreen() {
                 transition={{ type: 'timing', duration: 300 }}
                 style={styles.content}
             >
-                <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={handleBack}
+                >
                     <Ionicons name="arrow-back" size={24} color="#000" />
                 </TouchableOpacity>
 
@@ -68,7 +71,10 @@ export default function EmailSignUpScreen() {
 
                 <View style={styles.inputContainer}>
                     <TextInput
-                        style={[styles.input, !isValidEmail && styles.inputError]}
+                        style={[
+                            styles.input,
+                            !isValidEmail && styles.inputError
+                        ]}
                         placeholder="Email"
                         value={email}
                         onChangeText={handleEmailChange}
@@ -85,20 +91,15 @@ export default function EmailSignUpScreen() {
                     )}
                 </View>
 
-                <TouchableOpacity
-                    style={[
-                        styles.continueButton,
-                        (!email || !isValidEmail) && styles.continueButtonDisabled,
-                    ]}
+                <Button
+                    variant="primary"
+                    size="md"
                     onPress={handleContinue}
                     disabled={!email || !isValidEmail || isLoading}
+                    isLoading={isLoading}
                 >
-                    {isLoading ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                        <Text weight="medium" style={styles.continueButtonText}>Continue</Text>
-                    )}
-                </TouchableOpacity>
+                    Continue
+                </Button>
 
                 <View style={styles.dividerContainer}>
                     <View style={styles.divider} />
@@ -106,17 +107,21 @@ export default function EmailSignUpScreen() {
                     <View style={styles.divider} />
                 </View>
 
-                <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignUp}>
-                    <Ionicons name="logo-google" size={24} color="#4285F4" style={styles.googleIcon} />
-                    <Text weight="medium" style={styles.googleButtonText}>Continue with Google</Text>
-                </TouchableOpacity>
+                <Button
+                    variant="outline"
+                    size="md"
+                    onPress={handleGoogleSignUp}
+                    icon={<Ionicons name="logo-google" size={24} color="#4285F4" />}
+                >
+                    Continue with Google
+                </Button>
 
-                <View style={styles.termsContainer}>
-                    <Text weight="regular" style={styles.termsText}>
+                <View style={styles.footer}>
+                    <Text weight="regular" style={styles.footerText}>
                         By continuing, you agree to our{' '}
-                        <Text weight="medium" style={styles.termsLink}>Terms of Service</Text>
+                        <Text weight="medium" style={styles.linkText}>Terms of Service</Text>
                         {' '}and{' '}
-                        <Text weight="medium" style={styles.termsLink}>Privacy Policy</Text>
+                        <Text weight="medium" style={styles.linkText}>Privacy Policy</Text>
                     </Text>
                 </View>
             </MotiView>
@@ -137,48 +142,33 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     title: {
-        ...typography.h2,
+        fontSize: 24,
         marginBottom: 32,
     },
     inputContainer: {
-        marginBottom: 24,
+        marginBottom: 32,
+        zIndex: 1,
     },
     input: {
-        ...typography.bodyLarge,
         height: 56,
         borderWidth: 1,
         borderColor: '#E5E5E5',
         borderRadius: 8,
         paddingHorizontal: 16,
-        backgroundColor: '#FFFFFF',
+        fontSize: 16,
     },
     inputError: {
         borderColor: '#FF3B30',
     },
     errorText: {
-        ...typography.caption,
         color: '#FF3B30',
+        fontSize: 12,
         marginTop: 8,
-    },
-    continueButton: {
-        height: 56,
-        backgroundColor: '#008751',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    continueButtonDisabled: {
-        backgroundColor: '#CCCCCC',
-    },
-    continueButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
     },
     dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 24,
+        marginVertical: 24,
     },
     divider: {
         flex: 1,
@@ -186,36 +176,22 @@ const styles = StyleSheet.create({
         backgroundColor: '#E5E5E5',
     },
     dividerText: {
-        ...typography.bodySmall,
         marginHorizontal: 16,
         color: '#888888',
-    },
-    googleButton: {
-        height: 56,
-        flexDirection: 'row',
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
+        fontSize: 14,
     },
     googleIcon: {
         marginRight: 8,
     },
-    googleButtonText: {
-        ...typography.bodyMedium,
-        color: '#333333',
-    },
-    termsContainer: {
+    footer: {
         marginTop: 16,
     },
-    termsText: {
-        ...typography.bodySmall,
+    footerText: {
         textAlign: 'center',
         color: '#888888',
+        fontSize: 14,
     },
-    termsLink: {
+    linkText: {
         color: '#008751',
     },
 }); 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
     View,
-    StyleSheet,
     TextInput,
     TouchableOpacity,
     SafeAreaView,
@@ -9,17 +8,18 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
-    Modal
+    Modal,
+    StyleSheet
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
-import { typography } from '@/utils/typography';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const { email } = useLocalSearchParams();
 
     // Form state
     const [firstName, setFirstName] = useState('');
@@ -32,7 +32,6 @@ export default function ProfileScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [currentStep, setCurrentStep] = useState(1); // 1: Name, 2: Phone, 3: DOB, 4: Password
 
     // Form validation
     const [errors, setErrors] = useState({
@@ -103,94 +102,103 @@ export default function ProfileScreen() {
         setShowPassword(!showPassword);
     };
 
-    // Validate fields based on current step
-    const validateCurrentStep = () => {
+    // Validate all fields before submission
+    const validateForm = () => {
         const newErrors = { ...errors };
-        let valid = true;
+        let isValid = true;
 
-        switch (currentStep) {
-            case 1: // Name validation
-                if (!firstName.trim()) {
-                    newErrors.firstName = 'First name is required';
-                    valid = false;
-                }
-                if (!lastName.trim()) {
-                    newErrors.lastName = 'Last name is required';
-                    valid = false;
-                }
-                break;
+        // First name validation
+        if (!firstName.trim()) {
+            newErrors.firstName = 'First name is required';
+            isValid = false;
+        }
 
-            case 2: // Phone validation
-                if (!phoneNumber || phoneNumber.length < 10) {
-                    newErrors.phoneNumber = 'Please enter a valid phone number';
-                    valid = false;
-                }
-                break;
+        // Last name validation
+        if (!lastName.trim()) {
+            newErrors.lastName = 'Last name is required';
+            isValid = false;
+        }
 
-            case 3: // Birthdate validation
-                if (!birthdate) {
-                    newErrors.birthdate = 'Please select your date of birth';
-                    valid = false;
-                }
-                break;
+        // Phone validation
+        if (!phoneNumber || phoneNumber.length < 10) {
+            newErrors.phoneNumber = 'Please enter a valid phone number';
+            isValid = false;
+        }
 
-            case 4: // Password validation
-                if (password.length < 8) {
-                    newErrors.password = 'Password must be at least 8 characters';
-                    valid = false;
-                } else if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-                    newErrors.password = 'Password must contain both letters and numbers';
-                    valid = false;
-                }
-                break;
+        // Birthdate validation
+        if (!birthdate) {
+            newErrors.birthdate = 'Please select your date of birth';
+            isValid = false;
+        }
+
+        // Password validation
+        if (password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters';
+            isValid = false;
+        } else if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+            newErrors.password = 'Password must contain both letters and numbers';
+            isValid = false;
         }
 
         setErrors(newErrors);
-        return valid;
-    };
-
-    // Handle next step
-    const handleNext = () => {
-        if (validateCurrentStep()) {
-            if (currentStep < 4) {
-                setCurrentStep(currentStep + 1);
-            } else {
-                handleSubmit();
-            }
-        }
+        return isValid;
     };
 
     // Handle back
     const handleBack = () => {
-        if (currentStep > 1) {
-            setCurrentStep(currentStep - 1);
-        } else {
-            router.back();
-        }
+        router.back();
     };
 
     // Handle form submission
     const handleSubmit = () => {
-        setIsLoading(true);
+        if (validateForm()) {
+            setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            setIsLoading(false);
-            // Navigate to home or onboarding
-            router.replace('/(app)');
-        }, 2000);
+            // Simulate API call
+            setTimeout(() => {
+                setIsLoading(false);
+                // Navigate to home or onboarding
+                router.replace('/(app)');
+            }, 2000);
+        }
     };
 
-    // Render the current step content
-    const renderStepContent = () => {
-        switch (currentStep) {
-            case 1:
-                return (
-                    <>
-                        <View style={styles.inputRow}>
-                            <View style={styles.inputContainer}>
+    return (
+        <SafeAreaView style={styles.container}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.keyboardView}
+            >
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <MotiView
+                        from={{ opacity: 0, translateY: 10 }}
+                        animate={{ opacity: 1, translateY: 0 }}
+                        transition={{ type: 'timing', duration: 300 }}
+                        style={styles.motiContainer}
+                    >
+                        <View style={styles.header}>
+                            <TouchableOpacity onPress={handleBack}>
+                                <Ionicons name="arrow-back" size={24} color="#000" />
+                            </TouchableOpacity>
+                            <Text weight="regular" style={styles.headerText}>Complete your profile</Text>
+                            <View style={{ width: 24 }} />
+                        </View>
+
+                        <Text weight="bold" style={styles.title}>You're almost done!</Text>
+                        <Text weight="regular" style={styles.subtitle}>Let's get to meet you</Text>
+
+                        {/* Full Name */}
+                        <View style={styles.nameContainer}>
+                            <View style={styles.inputWrap}>
                                 <TextInput
-                                    style={[styles.input, errors.firstName ? styles.inputError : {}]}
+                                    style={[
+                                        styles.input,
+                                        errors.firstName ? styles.errorInput : styles.normalInput
+                                    ]}
                                     placeholder="First name"
                                     value={firstName}
                                     onChangeText={(text) => {
@@ -207,9 +215,12 @@ export default function ProfileScreen() {
                                 ) : null}
                             </View>
 
-                            <View style={styles.inputContainer}>
+                            <View style={styles.inputWrap}>
                                 <TextInput
-                                    style={[styles.input, errors.lastName ? styles.inputError : {}]}
+                                    style={[
+                                        styles.input,
+                                        errors.lastName ? styles.errorInput : styles.normalInput
+                                    ]}
                                     placeholder="Last name"
                                     value={lastName}
                                     onChangeText={(text) => {
@@ -226,15 +237,25 @@ export default function ProfileScreen() {
                                 ) : null}
                             </View>
                         </View>
-                    </>
-                );
 
-            case 2:
-                return (
-                    <>
+                        {/* Email (disabled, passed from previous screen) */}
                         <View style={styles.inputContainer}>
                             <TextInput
-                                style={[styles.input, errors.phoneNumber ? styles.inputError : {}]}
+                                style={[styles.input, styles.disabledInput]}
+                                value={email as string}
+                                editable={false}
+                                placeholder="Email"
+                                placeholderTextColor="#AAAAAA"
+                            />
+                        </View>
+
+                        {/* Phone Number */}
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    errors.phoneNumber ? styles.errorInput : styles.normalInput
+                                ]}
                                 placeholder="Phone number"
                                 value={phoneNumber}
                                 onChangeText={handlePhoneNumberChange}
@@ -248,84 +269,81 @@ export default function ProfileScreen() {
                                 </Text>
                             ) : null}
                         </View>
-                    </>
-                );
 
-            case 3:
-                return (
-                    <>
-                        <TouchableOpacity
-                            style={[styles.input, styles.dateInput, errors.birthdate ? styles.inputError : {}]}
-                            onPress={() => setShowDatePicker(true)}
-                        >
-                            <Text
-                                weight="regular"
-                                style={[
-                                    styles.dateInputText,
-                                    !birthdate && styles.placeholderText
-                                ]}
-                            >
-                                {birthdate ? formatDate(birthdate) : 'Birthday'}
-                            </Text>
-                            <Ionicons name="calendar-outline" size={20} color="#888888" />
-                        </TouchableOpacity>
-
-                        {errors.birthdate ? (
-                            <Text weight="regular" style={styles.errorText}>
-                                {errors.birthdate}
-                            </Text>
-                        ) : null}
-
-                        {showDatePicker && (
-                            Platform.OS === 'ios' ? (
-                                <Modal
-                                    transparent={true}
-                                    animationType="slide"
-                                    visible={showDatePicker}
-                                >
-                                    <View style={styles.modalContainer}>
-                                        <View style={styles.datePickerContainer}>
-                                            <View style={styles.datePickerHeader}>
-                                                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                                    <Text weight="medium" style={styles.datePickerCancel}>Cancel</Text>
-                                                </TouchableOpacity>
-                                                <Text weight="bold" style={styles.datePickerTitle}>Select Date</Text>
-                                                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                                    <Text weight="medium" style={styles.datePickerDone}>Done</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                            <DateTimePicker
-                                                value={birthdate || new Date()}
-                                                mode="date"
-                                                display="spinner"
-                                                onChange={handleDateChange}
-                                                maximumDate={new Date()}
-                                                minimumDate={new Date(1940, 0, 1)}
-                                            />
-                                        </View>
-                                    </View>
-                                </Modal>
-                            ) : (
-                                <DateTimePicker
-                                    value={birthdate || new Date()}
-                                    mode="date"
-                                    display="default"
-                                    onChange={handleDateChange}
-                                    maximumDate={new Date()}
-                                    minimumDate={new Date(1940, 0, 1)}
-                                />
-                            )
-                        )}
-                    </>
-                );
-
-            case 4:
-                return (
-                    <>
+                        {/* Date of Birth */}
                         <View style={styles.inputContainer}>
-                            <View style={styles.passwordInputContainer}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.datePickerButton,
+                                    errors.birthdate ? styles.errorInput : styles.normalInput
+                                ]}
+                                onPress={() => setShowDatePicker(true)}
+                            >
+                                <Text
+                                    weight="regular"
+                                    style={!birthdate ? styles.placeholderText : styles.dateText}
+                                >
+                                    {birthdate ? formatDate(birthdate) : 'Birthday'}
+                                </Text>
+                                <Ionicons name="calendar-outline" size={20} color="#888888" />
+                            </TouchableOpacity>
+
+                            {errors.birthdate ? (
+                                <Text weight="regular" style={styles.errorText}>
+                                    {errors.birthdate}
+                                </Text>
+                            ) : null}
+
+                            {showDatePicker && (
+                                Platform.OS === 'ios' ? (
+                                    <Modal
+                                        transparent={true}
+                                        animationType="slide"
+                                        visible={showDatePicker}
+                                    >
+                                        <View style={styles.modalOverlay}>
+                                            <View style={styles.datePickerContainer}>
+                                                <View style={styles.datePickerHeader}>
+                                                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                                        <Text weight="medium" style={styles.cancelText}>Cancel</Text>
+                                                    </TouchableOpacity>
+                                                    <Text weight="bold">Select Date</Text>
+                                                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                                        <Text weight="medium" style={styles.doneText}>Done</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                <DateTimePicker
+                                                    value={birthdate || new Date()}
+                                                    mode="date"
+                                                    display="spinner"
+                                                    onChange={handleDateChange}
+                                                    maximumDate={new Date()}
+                                                    minimumDate={new Date(1940, 0, 1)}
+                                                />
+                                            </View>
+                                        </View>
+                                    </Modal>
+                                ) : (
+                                    <DateTimePicker
+                                        value={birthdate || new Date()}
+                                        mode="date"
+                                        display="default"
+                                        onChange={handleDateChange}
+                                        maximumDate={new Date()}
+                                        minimumDate={new Date(1940, 0, 1)}
+                                    />
+                                )
+                            )}
+                        </View>
+
+                        {/* Password */}
+                        <View style={styles.inputContainer}>
+                            <View style={styles.passwordContainer}>
                                 <TextInput
-                                    style={[styles.input, styles.passwordInput, errors.password ? styles.inputError : {}]}
+                                    style={[
+                                        styles.passwordInput,
+                                        errors.password ? styles.errorInput : {}
+                                    ]}
                                     placeholder="Password"
                                     value={password}
                                     onChangeText={(text) => {
@@ -340,7 +358,7 @@ export default function ProfileScreen() {
                                     style={styles.passwordToggle}
                                     onPress={togglePasswordVisibility}
                                 >
-                                    <Text weight="medium" style={styles.passwordToggleText}>
+                                    <Text weight="medium" style={styles.showHideText}>
                                         {showPassword ? 'Hide' : 'Show'}
                                     </Text>
                                 </TouchableOpacity>
@@ -351,52 +369,25 @@ export default function ProfileScreen() {
                                     {errors.password}
                                 </Text>
                             ) : (
-                                <Text weight="regular" style={styles.passwordHint}>
+                                <Text weight="regular" style={styles.helperText}>
                                     At least 8 characters, containing a letter and a number
                                 </Text>
                             )}
                         </View>
-                    </>
-                );
-        }
-    };
-
-    return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-                <ScrollView
-                    style={styles.content}
-                    contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <MotiView
-                        from={{ opacity: 0, translateY: 10 }}
-                        animate={{ opacity: 1, translateY: 0 }}
-                        transition={{ type: 'timing', duration: 300 }}
-                        style={styles.formContainer}
-                    >
-                        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                            <Ionicons name="arrow-back" size={24} color="#000" />
-                        </TouchableOpacity>
-
-                        <Text weight="bold" style={styles.title}>You're almost done!</Text>
-                        <Text weight="regular" style={styles.subtitle}>Let's get to meet you</Text>
-
-                        {renderStepContent()}
 
                         <TouchableOpacity
-                            style={[styles.nextButton, isLoading && styles.nextButtonDisabled]}
-                            onPress={handleNext}
+                            style={[
+                                styles.submitButton,
+                                isLoading ? styles.disabledButton : styles.activeButton
+                            ]}
+                            onPress={handleSubmit}
                             disabled={isLoading}
                         >
                             {isLoading ? (
                                 <ActivityIndicator color="#FFFFFF" />
                             ) : (
-                                <Text weight="medium" style={styles.nextButtonText}>
-                                    {currentStep === 4 ? 'Create Account' : 'Next'}
+                                <Text weight="medium" style={styles.buttonText}>
+                                    Create Account
                                 </Text>
                             )}
                         </TouchableOpacity>
@@ -412,109 +403,95 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
-    content: {
+    keyboardView: {
+        flex: 1,
+    },
+    scrollView: {
         flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
         padding: 24,
     },
-    formContainer: {
+    motiContainer: {
         flex: 1,
     },
-    backButton: {
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 24,
     },
+    headerText: {
+        color: '#6B7280',
+    },
     title: {
-        ...typography.h2,
+        fontSize: 24,
         marginBottom: 8,
     },
     subtitle: {
-        ...typography.bodyMedium,
-        color: '#666666',
+        color: '#6B7280',
         marginBottom: 32,
     },
-    inputRow: {
+    nameContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 24,
+        marginBottom: 16,
+        gap: 16,
+    },
+    inputWrap: {
+        flex: 1,
     },
     inputContainer: {
-        flex: 1,
-        marginBottom: 24,
+        marginBottom: 16,
     },
     input: {
-        ...typography.bodyLarge,
         height: 56,
         borderWidth: 1,
-        borderColor: '#E5E5E5',
         borderRadius: 8,
         paddingHorizontal: 16,
-        backgroundColor: '#FFFFFF',
+        fontSize: 16,
     },
-    inputError: {
-        borderColor: '#FF3B30',
+    normalInput: {
+        borderColor: '#E5E7EB',
+    },
+    errorInput: {
+        borderColor: '#EF4444',
+    },
+    disabledInput: {
+        backgroundColor: '#F9FAFB',
+        color: '#9CA3AF',
+        borderColor: '#E5E7EB',
     },
     errorText: {
-        ...typography.caption,
-        color: '#FF3B30',
+        color: '#EF4444',
+        fontSize: 12,
         marginTop: 8,
     },
-    dateInput: {
+    helperText: {
+        color: '#6B7280',
+        fontSize: 12,
+        marginTop: 8,
+    },
+    datePickerButton: {
+        height: 56,
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    dateInputText: {
-        color: '#333333',
-    },
     placeholderText: {
-        color: '#AAAAAA',
+        color: '#9CA3AF',
     },
-    passwordInputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-        borderRadius: 8,
-        height: 56,
-        backgroundColor: '#FFFFFF',
+    dateText: {
+        color: '#1F2937',
     },
-    passwordInput: {
+    modalOverlay: {
         flex: 1,
-        borderWidth: 0,
-        height: '100%',
-    },
-    passwordToggle: {
-        paddingHorizontal: 16,
-    },
-    passwordToggleText: {
-        color: '#008751',
-    },
-    passwordHint: {
-        ...typography.caption,
-        color: '#888888',
-        marginTop: 8,
-    },
-    nextButton: {
-        height: 56,
-        backgroundColor: '#008751',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 'auto',
-    },
-    nextButtonDisabled: {
-        backgroundColor: '#CCCCCC',
-    },
-    nextButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-    },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
     },
     datePickerContainer: {
         backgroundColor: '#FFFFFF',
@@ -528,17 +505,50 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E5E5',
+        borderBottomColor: '#E5E7EB',
     },
-    datePickerTitle: {
-        ...typography.bodyLarge,
+    cancelText: {
+        color: '#6B7280',
     },
-    datePickerCancel: {
-        ...typography.bodyMedium,
-        color: '#888888',
-    },
-    datePickerDone: {
-        ...typography.bodyMedium,
+    doneText: {
         color: '#008751',
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderRadius: 8,
+        height: 56,
+        backgroundColor: '#FFFFFF',
+        overflow: 'hidden',
+        borderColor: '#E5E7EB',
+    },
+    passwordInput: {
+        flex: 1,
+        height: '100%',
+        paddingHorizontal: 16,
+        fontSize: 16,
+    },
+    passwordToggle: {
+        paddingHorizontal: 16,
+    },
+    showHideText: {
+        color: '#008751',
+    },
+    submitButton: {
+        height: 56,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 32,
+    },
+    activeButton: {
+        backgroundColor: '#008751',
+    },
+    disabledButton: {
+        backgroundColor: '#D1D5DB',
+    },
+    buttonText: {
+        color: '#FFFFFF',
     },
 }); 

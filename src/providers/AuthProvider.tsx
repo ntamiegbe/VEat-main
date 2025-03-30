@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
-import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 
 type AuthContextType = {
     session: Session | null;
@@ -16,41 +16,56 @@ const AuthContext = createContext<AuthContextType>({
     signOut: async () => { },
 });
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const [session, setSession] = useState<Session | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const router = useRouter();
+// This hook will protect the route access based on user authentication
+function useProtectedRoute(session: Session | null, isLoading: boolean) {
     const segments = useSegments();
-    const navigationState = useRootNavigationState();
+    const router = useRouter();
 
-    // Handle routing based on auth state
     useEffect(() => {
-        if (!navigationState?.key || isLoading) return;
+        // Skip redirects when app is still loading auth state
+        if (isLoading) return;
 
         const inAuthGroup = segments[0] === '(auth)';
         const inAppGroup = segments[0] === '(app)';
 
-        if (session && inAuthGroup) {
-            // Redirect to home if user is logged in and on auth screen
+        // Only perform redirects if we're in a stable state and the route actually needs protecting
+        if (!session && inAppGroup) {
+            // If the user is not signed in and the initial segment is in the app group
+            router.replace('/(auth)/intro');
+        } else if (session && inAuthGroup && segments[1] !== 'signup') {
+            // Redirect away from auth screens (except signup flow) if the user is signed in
             router.replace('/(app)');
-        } else if (!session && inAppGroup) {
-            // Redirect to login if user is not logged in and trying to access app
-            router.replace('/(auth)/login');
         }
-    }, [session, segments, navigationState?.key, isLoading]);
+    }, [session, segments, isLoading]);
+}
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+    const [session, setSession] = useState<Session | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+
+    // Use the protected route hook
+    useProtectedRoute(session, isLoading);
 
     // Set up Supabase auth state listener
     useEffect(() => {
         // Initial session check
-        supabase?.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setIsLoading(false);
-        });
+        const initializeAuth = async () => {
+            try {
+                const { data: { session: initialSession } } = await supabase?.auth.getSession() || { data: { session: null } };
+                setSession(initialSession);
+            } catch (error) {
+                console.error('Error checking auth session:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        initializeAuth();
 
         // Listen for auth state changes
         const { data } = supabase?.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-            setIsLoading(false);
         }) || { data: { subscription: { unsubscribe: () => { } } } };
         const { subscription } = data;
 
@@ -59,7 +74,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             subscription.unsubscribe();
         };
     }, []);
-
 
     // Sign out function
     const signOut = async () => {

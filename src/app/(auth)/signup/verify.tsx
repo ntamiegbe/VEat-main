@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
+import { View, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
-import { typography } from '@/utils/typography';
 import { Ionicons } from '@expo/vector-icons';
 
 // OTP input length
 const OTP_LENGTH = 4;
+// Demo OTP code for testing
+const DEMO_OTP = '1234';
 
 export default function VerifyScreen() {
     const router = useRouter();
@@ -27,6 +28,18 @@ export default function VerifyScreen() {
     // Initialize countdown timer when component mounts
     useEffect(() => {
         startResendTimer();
+
+        // Auto-fill demo OTP after a short delay for demonstration
+        const autoFillTimeout = setTimeout(() => {
+            // Fill in the demo code one by one
+            DEMO_OTP.split('').forEach((digit, index) => {
+                setTimeout(() => {
+                    handleOtpChange(digit, index);
+                }, index * 300);
+            });
+        }, 1500);
+
+        return () => clearTimeout(autoFillTimeout);
     }, []);
 
     // Function to start the resend countdown timer
@@ -82,19 +95,22 @@ export default function VerifyScreen() {
             setIsLoading(true);
             setVerificationError(false);
 
-            // Simulated API verification - for demo purposes we'll accept "8924" as valid
+            // Simulated API verification - accept the demo code
             setTimeout(() => {
-                if (otpString === '8924') {
+                if (otpString === DEMO_OTP) {
                     setVerificationSuccess(true);
                     setVerificationError(false);
                     // Navigate to profile completion after a brief delay
                     setTimeout(() => {
-                        router.push('/(auth)/signup/profile');
+                        router.push({
+                            pathname: '/(auth)/signup/profile',
+                            params: { email }
+                        });
                     }, 1000);
                 } else {
                     setVerificationSuccess(false);
                     setVerificationError(true);
-                    Alert.alert('Invalid Code', 'The verification code you entered is incorrect. Please try again.');
+                    Alert.alert('Invalid Code', 'For this demo, please use the code 1234');
                 }
                 setIsLoading(false);
             }, 1500);
@@ -116,7 +132,16 @@ export default function VerifyScreen() {
             inputRefs.current[0]?.focus();
 
             // Show alert that code has been resent
-            Alert.alert('Code Resent', `A new verification code has been sent to ${email}`);
+            Alert.alert('Demo Code', `For demonstration, use the code: ${DEMO_OTP}`);
+
+            // Auto-fill demo OTP after a short delay for demonstration
+            setTimeout(() => {
+                DEMO_OTP.split('').forEach((digit, index) => {
+                    setTimeout(() => {
+                        handleOtpChange(digit, index);
+                    }, index * 300);
+                });
+            }, 1500);
         }
     };
 
@@ -156,7 +181,10 @@ export default function VerifyScreen() {
 
                         <View style={styles.otpContainer}>
                             {otp.map((digit, index) => (
-                                <View key={index} style={[styles.otpBox, styles.otpBoxFilled]}>
+                                <View
+                                    key={index}
+                                    style={styles.otpBoxFilled}
+                                >
                                     <Text weight="bold" style={styles.otpText}>{digit}</Text>
                                 </View>
                             ))}
@@ -187,7 +215,7 @@ export default function VerifyScreen() {
                 )}
 
                 <Text weight="regular" style={styles.tipText}>
-                    Tip: Be sure to check your inbox and spam folders
+                    Tip: For this demo, use code 1234
                 </Text>
 
                 <TouchableOpacity
@@ -197,10 +225,7 @@ export default function VerifyScreen() {
                 >
                     <Text
                         weight="medium"
-                        style={[
-                            styles.resendText,
-                            resendCountdown > 0 ? styles.resendTextDisabled : {}
-                        ]}
+                        style={resendCountdown > 0 ? styles.resendTextDisabled : styles.resendText}
                     >
                         Resend code{resendCountdown > 0 ? ` in ${resendCountdown}s` : ''}
                     </Text>
@@ -230,11 +255,12 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     title: {
-        ...typography.h2,
+        fontSize: 24,
+        fontWeight: 'bold',
         marginBottom: 12,
     },
     subtitle: {
-        ...typography.bodyMedium,
+        fontSize: 16,
         color: '#666666',
         marginBottom: 32,
         lineHeight: 24,
@@ -254,7 +280,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         fontSize: 24,
         textAlign: 'center',
-        ...typography.h2,
         fontWeight: 'bold',
     },
     otpBoxActive: {
@@ -262,7 +287,13 @@ const styles = StyleSheet.create({
         borderWidth: 2,
     },
     otpBoxFilled: {
+        width: 70,
+        height: 70,
+        borderWidth: 1,
         borderColor: '#008751',
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: '#F6FBF9',
     },
     otpBoxError: {
@@ -273,16 +304,15 @@ const styles = StyleSheet.create({
         color: '#333333',
     },
     tipText: {
-        ...typography.caption,
+        fontSize: 12,
         color: '#888888',
         marginBottom: 20,
     },
     resendButton: {
-        marginTop: 8,
-        padding: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 8,
     },
     resendText: {
-        ...typography.bodyMedium,
         color: '#008751',
     },
     resendTextDisabled: {
@@ -317,7 +347,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingText: {
-        ...typography.bodyMedium,
         marginTop: 16,
         color: '#008751',
     },
