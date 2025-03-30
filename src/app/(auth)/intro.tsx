@@ -22,9 +22,9 @@ export default function IntroScreen() {
         router.push('/(auth)/login')
     }
 
-    // Navigate to signup screen (currently using login as there's no separate signup)
+    // Navigate to signup screen
     const handleSignUp = () => {
-        router.push('/(auth)/login')
+        router.push('/(auth)/signup/email')
     }
 
     if (isLoading) {
@@ -74,7 +74,7 @@ export default function IntroScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FCFCFC',
+        backgroundColor: '#FFFFFF',
     },
     loadingContainer: {
         flex: 1,
