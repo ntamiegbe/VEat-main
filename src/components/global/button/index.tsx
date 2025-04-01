@@ -1,7 +1,6 @@
 /* eslint-disable max-lines-per-function */
 import React, { useEffect } from 'react';
-import { LogBox, Text, View, ActivityIndicator } from 'react-native';
-import { TouchableRipple } from 'react-native-paper';
+import { LogBox, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { cn } from '@/core/utils';
 
 type ButtonProps = {
@@ -106,7 +105,7 @@ const Button = ({
 
   return (
     <>
-      <TouchableRipple
+      <TouchableOpacity
         onPress={onPress}
         className={cn(
           'w-full transition-all mx-auto flex flex-row items-center justify-center',
@@ -138,7 +137,7 @@ const Button = ({
           )}
           {iconLeft && !isLoading && iconLeft}
         </View>
-      </TouchableRipple>
+      </TouchableOpacity>
     </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     TextInput,
@@ -16,9 +16,11 @@ import Text from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import BackButton from '@/components/global/back-button';
+import { supabase } from '@/lib/supabase';
 
 export default function ProfileScreen() {
-    const { email } = useLocalSearchParams();
+    // Get params from Google sign-up
+    const { email, userId, fullName } = useLocalSearchParams();
 
     // Form state
     const [firstName, setFirstName] = useState('');
@@ -40,6 +42,21 @@ export default function ProfileScreen() {
         birthdate: '',
         password: ''
     });
+
+    // Parse the full name from Google sign-up if available
+    useEffect(() => {
+        if (fullName) {
+            const nameParts = String(fullName).split(' ');
+            if (nameParts.length > 0) {
+                setFirstName(nameParts[0]);
+
+                // Join the rest as last name if there are multiple parts
+                if (nameParts.length > 1) {
+                    setLastName(nameParts.slice(1).join(' '));
+                }
+            }
+        }
+    }, [fullName]);
 
     // Format date for display
     const formatDate = (date: Date | null) => {
@@ -130,13 +147,15 @@ export default function ProfileScreen() {
             isValid = false;
         }
 
-        // Password validation
-        if (password.length < 8) {
-            newErrors.password = 'Password must be at least 8 characters';
-            isValid = false;
-        } else if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-            newErrors.password = 'Password must contain both letters and numbers';
-            isValid = false;
+        // Password validation - only required for non-OAuth users
+        if (!userId) {
+            if (password.length < 8) {
+                newErrors.password = 'Password must be at least 8 characters';
+                isValid = false;
+            } else if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+                newErrors.password = 'Password must contain both letters and numbers';
+                isValid = false;
+            }
         }
 
         setErrors(newErrors);
@@ -144,16 +163,37 @@ export default function ProfileScreen() {
     };
 
     // Handle form submission
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (validateForm()) {
             setIsLoading(true);
 
-            // Simulate API call
-            setTimeout(() => {
-                setIsLoading(false);
-                // Navigate to home or onboarding
+            try {
+                // For users who signed up with Google
+                if (userId) {
+                    // Update user metadata in Supabase
+                    const { error } = await supabase.auth.updateUser({
+                        data: {
+                            phone_number: phoneNumber,
+                            first_name: firstName,
+                            last_name: lastName,
+                            birthdate: birthdate ? birthdate.toISOString() : null
+                        }
+                    });
+
+                    if (error) throw error;
+                } else {
+                    // This would be for email/password signup flow
+                    // You can implement this based on your authentication flow
+                }
+
+                // Navigate to app's main screen
                 router.replace('/(app)');
-            }, 2000);
+            } catch (error: any) {
+                console.error("Profile update error:", error);
+                alert("Failed to update profile: " + error.message);
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -245,7 +285,7 @@ export default function ProfileScreen() {
                             ) : null}
                         </View>
 
-                        {/* Birthdate */}
+                        {/* Date of Birth */}
                         <View className="mb-4">
                             <TouchableOpacity
                                 className={`h-14 border ${errors.birthdate ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 justify-center mb-1`}
@@ -262,113 +302,111 @@ export default function ProfileScreen() {
                             ) : null}
                         </View>
 
-                        {/* Password */}
-                        <View className="mb-6">
-                            <View className="relative">
-                                <TextInput
-                                    className={`h-14 border ${errors.password ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base mb-1 pr-12`}
-                                    placeholder="Create password"
-                                    value={password}
-                                    onChangeText={(text) => {
-                                        setPassword(text);
-                                        setErrors({ ...errors, password: '' });
-                                    }}
-                                    secureTextEntry={!showPassword}
-                                    returnKeyType="done"
-                                    placeholderTextColor="#AAAAAA"
-                                />
-                                <TouchableOpacity
-                                    className="absolute right-4 top-4"
-                                    onPress={togglePasswordVisibility}
-                                >
-                                    <Ionicons
-                                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                                        size={24}
-                                        color="#AAAAAA"
+                        {/* Password (only shown for non-OAuth users) */}
+                        {!userId && (
+                            <View className="mb-4">
+                                <View className="relative">
+                                    <TextInput
+                                        className={`h-14 border ${errors.password ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base mb-1 pr-12`}
+                                        placeholder="Password"
+                                        value={password}
+                                        onChangeText={(text) => {
+                                            setPassword(text);
+                                            setErrors({ ...errors, password: '' });
+                                        }}
+                                        secureTextEntry={!showPassword}
+                                        returnKeyType="done"
+                                        placeholderTextColor="#AAAAAA"
                                     />
-                                </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={togglePasswordVisibility}
+                                        className="absolute right-3 h-full justify-center"
+                                    >
+                                        <Ionicons
+                                            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                            size={24}
+                                            color="#AAAAAA"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                {errors.password ? (
+                                    <Text weight="regular" className="text-red-500 text-xs">
+                                        {errors.password}
+                                    </Text>
+                                ) : null}
                             </View>
-                            {errors.password ? (
-                                <Text weight="regular" className="text-red-500 text-xs">
-                                    {errors.password}
-                                </Text>
-                            ) : (
-                                <Text weight="regular" className="text-gray-500 text-xs">
-                                    At least 8 characters with letters and numbers
-                                </Text>
-                            )}
-                        </View>
+                        )}
 
-                        {/* Submit Button */}
+                        {/* Submit button */}
                         <TouchableOpacity
-                            className={`h-14 rounded-lg items-center justify-center mb-8 ${isLoading ? 'bg-gray-300' : 'bg-[#008751]'
-                                }`}
                             onPress={handleSubmit}
+                            className={`h-14 rounded-lg justify-center items-center mt-4 mb-6 ${isLoading ? 'bg-primary-300' : 'bg-primary-500'}`}
                             disabled={isLoading}
                         >
                             {isLoading ? (
-                                <ActivityIndicator color="#FFFFFF" />
+                                <ActivityIndicator color="#fff" />
                             ) : (
                                 <Text weight="medium" className="text-white text-base">
-                                    Create Account
+                                    Complete Sign Up
                                 </Text>
                             )}
                         </TouchableOpacity>
                     </MotiView>
                 </ScrollView>
-            </KeyboardAvoidingView>
 
-            {/* Date Picker Modal for Android */}
-            {Platform.OS === 'android' && showDatePicker && (
-                <DateTimePicker
-                    value={birthdate || new Date(2000, 0, 1)}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                    maximumDate={new Date()}
-                />
-            )}
+                <View className="absolute bottom-8 left-5 z-50">
+                    <BackButton />
+                </View>
 
-            {/* Date Picker for iOS */}
-            {Platform.OS === 'ios' && (
-                <Modal
-                    animationType="slide"
-                    transparent={true}
-                    visible={showDatePicker}
-                    onRequestClose={() => setShowDatePicker(false)}
-                >
-                    <View className="flex-1 justify-end bg-black/50">
-                        <View className="bg-white rounded-t-lg">
-                            <View className="flex-row justify-between p-4 border-b border-gray-200">
-                                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                    <Text className="text-gray-500 text-base">Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        if (!birthdate) setBirthdate(new Date(2000, 0, 1));
-                                        setShowDatePicker(false);
-                                    }}
-                                >
-                                    <Text className="text-[#008751] font-medium text-base">Done</Text>
-                                </TouchableOpacity>
+                {/* Date Picker Modal for iOS */}
+                {Platform.OS === 'ios' && (
+                    <Modal
+                        visible={showDatePicker}
+                        transparent={true}
+                        animationType="slide"
+                    >
+                        <View className="flex-1 justify-end bg-black/30">
+                            <View className="bg-white p-4">
+                                <View className="flex-row justify-between mb-4">
+                                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                        <Text weight="medium" className="text-primary-500">Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setShowDatePicker(false);
+                                            if (!birthdate) {
+                                                setBirthdate(new Date());
+                                            }
+                                        }}
+                                    >
+                                        <Text weight="medium" className="text-primary-500">Done</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <DateTimePicker
+                                    value={birthdate || new Date()}
+                                    mode="date"
+                                    display="spinner"
+                                    onChange={handleDateChange}
+                                    maximumDate={new Date()}
+                                    minimumDate={new Date(1900, 0, 1)}
+                                />
                             </View>
-                            <DateTimePicker
-                                value={birthdate || new Date(2000, 0, 1)}
-                                mode="date"
-                                display="spinner"
-                                onChange={handleDateChange}
-                                style={{ height: 200 }}
-                                maximumDate={new Date()}
-                            />
                         </View>
-                    </View>
-                </Modal>
-            )}
+                    </Modal>
+                )}
 
-            {/* Back button with position controlled by parent */}
-            <View className="absolute bottom-8 left-8 z-50">
-                <BackButton />
-            </View>
+                {/* Date Picker for Android */}
+                {Platform.OS === 'android' && showDatePicker && (
+                    <DateTimePicker
+                        value={birthdate || new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={handleDateChange}
+                        maximumDate={new Date()}
+                        minimumDate={new Date(1900, 0, 1)}
+                    />
+                )}
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 } 

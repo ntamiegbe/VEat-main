@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
-import { View, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
 import BackButton from '@/components/global/back-button';
 import Button from '@/components/global/button';
 import GoogleIcon from '@assets/icons/GoogleIcon.svg';
+import { supabase } from '@/lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
+
+// Register for the authentication callback
+WebBrowser.maybeCompleteAuthSession();
 
 export default function EmailSignUpScreen() {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isValidEmail, setIsValidEmail] = useState(true);
 
     // Validate email format
@@ -41,10 +49,104 @@ export default function EmailSignUpScreen() {
         }
     };
 
-    // Continue with Google
-    const handleGoogleSignUp = () => {
-        // Implement Google sign-up logic
-        console.log('Sign up with Google');
+    // Handle Google Sign Up
+    const handleGoogleSignUp = async () => {
+        try {
+            setIsGoogleLoading(true);
+
+            // Get app scheme
+            const scheme = Constants.expoConfig?.scheme || 'veat';
+
+            // Create a proper redirect URL using the app scheme
+            const redirectUrl = `${scheme}://auth/callback`;
+
+            // Start OAuth flow with Supabase
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: redirectUrl,
+                    skipBrowserRedirect: true,
+                    queryParams: {
+                        prompt: 'consent',
+                        access_type: 'offline'
+                    }
+                }
+            });
+
+            if (error) throw error;
+            if (!data?.url) throw new Error('No authentication URL returned from Supabase');
+
+            // Open auth session in browser - this is where the redirect happens
+            const result = await WebBrowser.openAuthSessionAsync(
+                data.url,
+                redirectUrl,
+                { showInRecents: true }
+            );
+
+            // DIRECT HANDLING: Extract tokens directly from the result URL
+            if (result.type === 'success' && result.url) {
+                // Parse tokens from URL (usually in hash fragment)
+                let accessToken = '';
+                let refreshToken = '';
+
+                if (result.url.includes('#')) {
+                    const hashPart = result.url.split('#')[1];
+                    const hashParams = new URLSearchParams(hashPart);
+                    accessToken = hashParams.get('access_token') || '';
+                    refreshToken = hashParams.get('refresh_token') || '';
+                }
+
+                if (accessToken) {
+                    // Set the session with the tokens
+                    const { data, error } = await supabase.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken
+                    });
+
+                    if (error) throw error;
+
+                    // Get user details
+                    const { data: userData } = await supabase.auth.getUser();
+
+                    if (userData?.user) {
+                        // Extract user metadata
+                        const email = userData.user.email;
+                        const fullName = userData.user.user_metadata?.full_name || '';
+                        const userId = userData.user.id;
+
+                        // Try all navigation methods
+                        try {
+                            // Method 1: Use router.navigate
+                            router.navigate({
+                                pathname: '/(auth)/signup/profile',
+                                params: {
+                                    userId,
+                                    email: email || '',
+                                    fullName
+                                }
+                            });
+                        } catch (err) {
+                            // Method 2: Try direct linking
+                            try {
+                                const profileDeepLink = `${scheme}://signup/profile?userId=${userId}&email=${encodeURIComponent(email || '')}&fullName=${encodeURIComponent(fullName)}`;
+                                await Linking.openURL(profileDeepLink);
+                            } catch (linkErr) {
+                                // Method 3: Last resort - hard replace
+                                router.replace('/(auth)/signup/profile');
+                            }
+                        }
+                    }
+                } else {
+                    Alert.alert('Login Failed', 'Could not authenticate with Google. Please try again.');
+                }
+            } else {
+                Alert.alert('Signup cancelled or failed');
+            }
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to sign up with Google');
+        } finally {
+            setIsGoogleLoading(false);
+        }
     };
 
     return (
@@ -102,10 +204,10 @@ export default function EmailSignUpScreen() {
                         <Button
                             variant="outline"
                             onPress={handleGoogleSignUp}
-                            disabled={!email || !isValidEmail}
+                            isLoading={isGoogleLoading}
                             icon={<GoogleIcon />}
                         >
-                            Continue with Google
+                            Sign up with Google
                         </Button>
 
                         <View className="mt-4 mb-6">
