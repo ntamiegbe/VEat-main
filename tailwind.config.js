@@ -24,6 +24,7 @@ module.exports = {
         },
         tc: {
           primary: '#020202',
+          dark: '#002C1F',  
         },
         secondary: {
           subtext: '#5E5E5E',

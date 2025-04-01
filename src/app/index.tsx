@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 import { ActivityIndicator, View } from 'react-native';
 import Text from '@/components/ui/Text';
@@ -13,17 +13,14 @@ export default function Index() {
     const { session, isLoading } = useAuth();
     const router = useRouter();
 
-    useEffect(() => {
-        if (!isLoading) {
-            if (session) {
-                // User is authenticated, redirect to home
-                router.replace('/(app)');
-            } else {
-                // User is not authenticated, redirect to intro
-                router.replace('/(auth)/intro');
-            }
+    if (!isLoading) {
+        // Instead of router.replace, use <Redirect> component for more reliable navigation
+        if (session) {
+            return <Redirect href="/(app)" />;
+        } else {
+            return <Redirect href="/(auth)/intro" />;
         }
-    }, [session, isLoading]);
+    }
 
     // Show loading indicator while checking auth
     return (

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "../../global.css";
 import { Slot, SplashScreen, Stack } from "expo-router";
 import { AuthProvider } from "@/providers/AuthProvider";
@@ -20,12 +20,37 @@ import { FontProvider } from "@/providers/FontProvider";
 SplashScreen.preventAutoHideAsync();
 
 export default function Root() {
+  const [appIsReady, setAppIsReady] = useState(false);
+
   useEffect(() => {
-    // Hide the splash screen after a short delay
-    setTimeout(async () => {
-      await SplashScreen.hideAsync();
-    }, 1000);
+    // Prepare the app and ensure all providers are ready
+    async function prepare() {
+      try {
+        // Artificial delay for demonstration
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Any other initialization can go here
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        // Tell the application to render
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
   }, []);
+
+  // When everything is ready, hide the splash screen and show the app
+  useEffect(() => {
+    if (appIsReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null; // Don't render anything until the app is ready
+  }
 
   return (
     <QueryProvider>

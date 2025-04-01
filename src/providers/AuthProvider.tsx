@@ -8,7 +8,7 @@ type AuthContextType = {
     signOut: () => Promise<void>;
 };
 
-// Create the auth context
+// Create the auth context with default values
 const AuthContext = createContext<AuthContextType>({
     session: null,
     isLoading: true,
@@ -24,22 +24,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Initial session check
         const initializeAuth = async () => {
             try {
-                const { data } = await supabase?.auth.getSession() || { data: { session: null } };
-                setSession(data.session);
+                setIsLoading(true);
+                // Make sure supabase is available before trying to use it
+                if (supabase) {
+                    const { data } = await supabase.auth.getSession();
+                    setSession(data.session);
+                }
             } catch (error) {
                 console.error('Error checking auth session:', error);
             } finally {
+                // Set loading to false even if there's an error
                 setIsLoading(false);
             }
         };
 
         initializeAuth();
 
-        // Listen for auth state changes
-        const { data } = supabase?.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-        }) || { data: { subscription: { unsubscribe: () => { } } } };
-        const { subscription } = data;
+        // Set up auth state change listener only if supabase is available
+        let subscription = { unsubscribe: () => { } };
+
+        if (supabase) {
+            const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+                setSession(session);
+            });
+            subscription = data.subscription;
+        }
 
         // Cleanup function
         return () => {
@@ -51,7 +60,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const signOut = async () => {
         try {
             setIsLoading(true);
-            await supabase?.auth.signOut();
+            if (supabase) {
+                await supabase.auth.signOut();
+            }
         } catch (error) {
             console.error('Error signing out:', error);
         } finally {

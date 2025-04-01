@@ -2,9 +2,7 @@
 import React, { useEffect } from 'react';
 import { LogBox, Text, View, ActivityIndicator } from 'react-native';
 import { TouchableRipple } from 'react-native-paper';
-
 import { cn } from '@/core/utils';
-// import LoadingModal from '../LoadingModal';
 
 type ButtonProps = {
   variant?: 'primary' | 'secondary' | 'outline' | 'plain';
@@ -38,7 +36,7 @@ const Button = ({
       case 'secondary':
         return 'bg-secondary-orange';
       case 'outline':
-        return 'bg-transparent border border-primary-main dark:border-accent-yellow-600';
+        return 'bg-transparent border border-secondary-stroke';
       case 'plain':
         return 'bg-transparent';
       default:
@@ -47,13 +45,17 @@ const Button = ({
   };
 
   const getButtonTextStyle = (): string => {
+    if (disabled) {
+      return 'text-secondary-caption';
+    }
+
     switch (variant) {
       case 'primary':
-        return 'text-white disabled:text-secondary-caption';
+        return 'text-white text-base font-bold';
       case 'secondary':
         return 'dark:text-accent-yellow-600';
       case 'outline':
-        return 'text-primary-main dark:text-accent-yellow-600';
+        return 'text-tc-primary font-';
       case 'plain':
         return 'text-black';
       default:
@@ -66,7 +68,7 @@ const Button = ({
       case 'sm':
         return 'py-2 px-2 rounded h-10 rounded-full';
       case 'md':
-        return 'py-4 px-5 h-12 rounded-full';
+        return 'py-[16px] px-[12px] rounded-full';
       case 'lg':
         return 'py-6 px-6 h-14 rounded-full';
       default:
@@ -74,8 +76,16 @@ const Button = ({
     }
   };
 
-  // Get appropriate spinner color based on button variant
   const getSpinnerColor = (): string => {
+    // Always show white spinner for primary variant when loading
+    if (isLoading && variant === 'primary') {
+      return '#FFFFFF';
+    }
+
+    if (disabled) {
+      return '#9CA3AF'; // secondary-caption color
+    }
+
     switch (variant) {
       case 'primary':
         return '#FFFFFF';
@@ -98,26 +108,27 @@ const Button = ({
     <>
       <TouchableRipple
         onPress={onPress}
-        rippleColor="rgba(0, 0, 0, .22)"
         className={cn(
           'w-full transition-all mx-auto flex flex-row items-center justify-center',
           getButtonSize(),
           getButtonStyle(),
           className,
-          {
-            'opacity-50': disabled,
-          }
         )}
-        disabled={isLoading || disabled}
+        disabled={disabled}
       >
         <View className="flex flex-row items-center justify-center gap-x-2">
           {icon && !isLoading && icon}
           {isLoading ? (
-            <ActivityIndicator size="small" color={getSpinnerColor()} />
+            <View style={{ width: 19, height: 19 }}>
+              <ActivityIndicator
+                size="small"
+                color={getSpinnerColor()}
+              />
+            </View>
           ) : (
             <Text
               className={cn(
-                'text-center text-base leading-4 font-bold',
+                'text-center font-bold text-base',
                 getButtonTextStyle(),
                 ButtonTextStyle
               )}
@@ -128,7 +139,6 @@ const Button = ({
           {iconLeft && !isLoading && iconLeft}
         </View>
       </TouchableRipple>
-      {/* <LoadingModal isVisible={isLoading} /> */}
     </>
   );
 };

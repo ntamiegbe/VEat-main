@@ -8,14 +8,14 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
-    Modal,
-    StyleSheet
+    Modal
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import BackButton from '@/components/global/back-button';
 
 export default function ProfileScreen() {
     const { email } = useLocalSearchParams();
@@ -143,11 +143,6 @@ export default function ProfileScreen() {
         return isValid;
     };
 
-    // Handle back
-    const handleBack = () => {
-        router.back();
-    };
-
     // Handle form submission
     const handleSubmit = () => {
         if (validateForm()) {
@@ -163,41 +158,30 @@ export default function ProfileScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView className="flex-1 bg-white">
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.keyboardView}
+                className="flex-1"
             >
                 <ScrollView
-                    style={styles.scrollView}
-                    contentContainerStyle={styles.scrollContent}
+                    className="flex-1"
+                    contentContainerStyle={{ flexGrow: 1 }}
                     keyboardShouldPersistTaps="handled"
                 >
                     <MotiView
                         from={{ opacity: 0, translateY: 10 }}
                         animate={{ opacity: 1, translateY: 0 }}
                         transition={{ type: 'timing', duration: 300 }}
-                        style={styles.motiContainer}
+                        className="flex-1 px-6 pt-6"
                     >
-                        <View style={styles.header}>
-                            <TouchableOpacity onPress={handleBack}>
-                                <Ionicons name="arrow-back" size={24} color="#000" />
-                            </TouchableOpacity>
-                            <Text weight="regular" style={styles.headerText}>Complete your profile</Text>
-                            <View style={{ width: 24 }} />
-                        </View>
-
-                        <Text weight="bold" style={styles.title}>You're almost done!</Text>
-                        <Text weight="regular" style={styles.subtitle}>Let's get to meet you</Text>
+                        <Text weight="bold" className="text-2xl mb-2">You're almost done!</Text>
+                        <Text weight="regular" className="text-gray-600 mb-6">Let's get to meet you</Text>
 
                         {/* Full Name */}
-                        <View style={styles.nameContainer}>
-                            <View style={styles.inputWrap}>
+                        <View className="flex-row gap-4 mb-4">
+                            <View className="flex-1">
                                 <TextInput
-                                    style={[
-                                        styles.input,
-                                        errors.firstName ? styles.errorInput : styles.normalInput
-                                    ]}
+                                    className={`h-14 border ${errors.firstName ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base mb-1`}
                                     placeholder="First name"
                                     value={firstName}
                                     onChangeText={(text) => {
@@ -208,18 +192,15 @@ export default function ProfileScreen() {
                                     placeholderTextColor="#AAAAAA"
                                 />
                                 {errors.firstName ? (
-                                    <Text weight="regular" style={styles.errorText}>
+                                    <Text weight="regular" className="text-red-500 text-xs">
                                         {errors.firstName}
                                     </Text>
                                 ) : null}
                             </View>
 
-                            <View style={styles.inputWrap}>
+                            <View className="flex-1">
                                 <TextInput
-                                    style={[
-                                        styles.input,
-                                        errors.lastName ? styles.errorInput : styles.normalInput
-                                    ]}
+                                    className={`h-14 border ${errors.lastName ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base mb-1`}
                                     placeholder="Last name"
                                     value={lastName}
                                     onChangeText={(text) => {
@@ -230,31 +211,26 @@ export default function ProfileScreen() {
                                     placeholderTextColor="#AAAAAA"
                                 />
                                 {errors.lastName ? (
-                                    <Text weight="regular" style={styles.errorText}>
+                                    <Text weight="regular" className="text-red-500 text-xs">
                                         {errors.lastName}
                                     </Text>
                                 ) : null}
                             </View>
                         </View>
 
-                        {/* Email (disabled, passed from previous screen) */}
-                        <View style={styles.inputContainer}>
+                        {/* Email field (disabled) */}
+                        <View className="mb-4">
                             <TextInput
-                                style={[styles.input, styles.disabledInput]}
+                                className="h-14 border border-gray-200 rounded-lg px-4 text-base bg-gray-50 text-gray-500"
                                 value={email as string}
                                 editable={false}
-                                placeholder="Email"
-                                placeholderTextColor="#AAAAAA"
                             />
                         </View>
 
                         {/* Phone Number */}
-                        <View style={styles.inputContainer}>
+                        <View className="mb-4">
                             <TextInput
-                                style={[
-                                    styles.input,
-                                    errors.phoneNumber ? styles.errorInput : styles.normalInput
-                                ]}
+                                className={`h-14 border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base mb-1`}
                                 placeholder="Phone number"
                                 value={phoneNumber}
                                 onChangeText={handlePhoneNumberChange}
@@ -263,87 +239,35 @@ export default function ProfileScreen() {
                                 placeholderTextColor="#AAAAAA"
                             />
                             {errors.phoneNumber ? (
-                                <Text weight="regular" style={styles.errorText}>
+                                <Text weight="regular" className="text-red-500 text-xs">
                                     {errors.phoneNumber}
                                 </Text>
                             ) : null}
                         </View>
 
-                        {/* Date of Birth */}
-                        <View style={styles.inputContainer}>
+                        {/* Birthdate */}
+                        <View className="mb-4">
                             <TouchableOpacity
-                                style={[
-                                    styles.datePickerButton,
-                                    errors.birthdate ? styles.errorInput : styles.normalInput
-                                ]}
+                                className={`h-14 border ${errors.birthdate ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 justify-center mb-1`}
                                 onPress={() => setShowDatePicker(true)}
                             >
-                                <Text
-                                    weight="regular"
-                                    style={!birthdate ? styles.placeholderText : styles.dateText}
-                                >
-                                    {birthdate ? formatDate(birthdate) : 'Birthday'}
+                                <Text className={birthdate ? 'text-black' : 'text-gray-400'}>
+                                    {birthdate ? formatDate(birthdate) : 'Date of birth'}
                                 </Text>
-                                <Ionicons name="calendar-outline" size={20} color="#888888" />
                             </TouchableOpacity>
-
                             {errors.birthdate ? (
-                                <Text weight="regular" style={styles.errorText}>
+                                <Text weight="regular" className="text-red-500 text-xs">
                                     {errors.birthdate}
                                 </Text>
                             ) : null}
-
-                            {showDatePicker && (
-                                Platform.OS === 'ios' ? (
-                                    <Modal
-                                        transparent={true}
-                                        animationType="slide"
-                                        visible={showDatePicker}
-                                    >
-                                        <View style={styles.modalOverlay}>
-                                            <View style={styles.datePickerContainer}>
-                                                <View style={styles.datePickerHeader}>
-                                                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                                        <Text weight="medium" style={styles.cancelText}>Cancel</Text>
-                                                    </TouchableOpacity>
-                                                    <Text weight="bold">Select Date</Text>
-                                                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                                        <Text weight="medium" style={styles.doneText}>Done</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                                <DateTimePicker
-                                                    value={birthdate || new Date()}
-                                                    mode="date"
-                                                    display="spinner"
-                                                    onChange={handleDateChange}
-                                                    maximumDate={new Date()}
-                                                    minimumDate={new Date(1940, 0, 1)}
-                                                />
-                                            </View>
-                                        </View>
-                                    </Modal>
-                                ) : (
-                                    <DateTimePicker
-                                        value={birthdate || new Date()}
-                                        mode="date"
-                                        display="default"
-                                        onChange={handleDateChange}
-                                        maximumDate={new Date()}
-                                        minimumDate={new Date(1940, 0, 1)}
-                                    />
-                                )
-                            )}
                         </View>
 
                         {/* Password */}
-                        <View style={styles.inputContainer}>
-                            <View style={styles.passwordContainer}>
+                        <View className="mb-6">
+                            <View className="relative">
                                 <TextInput
-                                    style={[
-                                        styles.passwordInput,
-                                        errors.password ? styles.errorInput : {}
-                                    ]}
-                                    placeholder="Password"
+                                    className={`h-14 border ${errors.password ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base mb-1 pr-12`}
+                                    placeholder="Create password"
                                     value={password}
                                     onChangeText={(text) => {
                                         setPassword(text);
@@ -354,38 +278,38 @@ export default function ProfileScreen() {
                                     placeholderTextColor="#AAAAAA"
                                 />
                                 <TouchableOpacity
-                                    style={styles.passwordToggle}
+                                    className="absolute right-4 top-4"
                                     onPress={togglePasswordVisibility}
                                 >
-                                    <Text weight="medium" style={styles.showHideText}>
-                                        {showPassword ? 'Hide' : 'Show'}
-                                    </Text>
+                                    <Ionicons
+                                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                        size={24}
+                                        color="#AAAAAA"
+                                    />
                                 </TouchableOpacity>
                             </View>
-
                             {errors.password ? (
-                                <Text weight="regular" style={styles.errorText}>
+                                <Text weight="regular" className="text-red-500 text-xs">
                                     {errors.password}
                                 </Text>
                             ) : (
-                                <Text weight="regular" style={styles.helperText}>
-                                    At least 8 characters, containing a letter and a number
+                                <Text weight="regular" className="text-gray-500 text-xs">
+                                    At least 8 characters with letters and numbers
                                 </Text>
                             )}
                         </View>
 
+                        {/* Submit Button */}
                         <TouchableOpacity
-                            style={[
-                                styles.submitButton,
-                                isLoading ? styles.disabledButton : styles.activeButton
-                            ]}
+                            className={`h-14 rounded-lg items-center justify-center mb-8 ${isLoading ? 'bg-gray-300' : 'bg-[#008751]'
+                                }`}
                             onPress={handleSubmit}
                             disabled={isLoading}
                         >
                             {isLoading ? (
                                 <ActivityIndicator color="#FFFFFF" />
                             ) : (
-                                <Text weight="medium" style={styles.buttonText}>
+                                <Text weight="medium" className="text-white text-base">
                                     Create Account
                                 </Text>
                             )}
@@ -393,161 +317,58 @@ export default function ProfileScreen() {
                     </MotiView>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Date Picker Modal for Android */}
+            {Platform.OS === 'android' && showDatePicker && (
+                <DateTimePicker
+                    value={birthdate || new Date(2000, 0, 1)}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                    maximumDate={new Date()}
+                />
+            )}
+
+            {/* Date Picker for iOS */}
+            {Platform.OS === 'ios' && (
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={showDatePicker}
+                    onRequestClose={() => setShowDatePicker(false)}
+                >
+                    <View className="flex-1 justify-end bg-black/50">
+                        <View className="bg-white rounded-t-lg">
+                            <View className="flex-row justify-between p-4 border-b border-gray-200">
+                                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                    <Text className="text-gray-500 text-base">Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (!birthdate) setBirthdate(new Date(2000, 0, 1));
+                                        setShowDatePicker(false);
+                                    }}
+                                >
+                                    <Text className="text-[#008751] font-medium text-base">Done</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <DateTimePicker
+                                value={birthdate || new Date(2000, 0, 1)}
+                                mode="date"
+                                display="spinner"
+                                onChange={handleDateChange}
+                                style={{ height: 200 }}
+                                maximumDate={new Date()}
+                            />
+                        </View>
+                    </View>
+                </Modal>
+            )}
+
+            {/* Back button with position controlled by parent */}
+            <View className="absolute bottom-8 left-8 z-50">
+                <BackButton />
+            </View>
         </SafeAreaView>
     );
-}
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    keyboardView: {
-        flex: 1,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: 24,
-    },
-    motiContainer: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    headerText: {
-        color: '#6B7280',
-    },
-    title: {
-        fontSize: 24,
-        marginBottom: 8,
-    },
-    subtitle: {
-        color: '#6B7280',
-        marginBottom: 32,
-    },
-    nameContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 16,
-        gap: 16,
-    },
-    inputWrap: {
-        flex: 1,
-    },
-    inputContainer: {
-        marginBottom: 16,
-    },
-    input: {
-        height: 56,
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        fontSize: 16,
-    },
-    normalInput: {
-        borderColor: '#E5E7EB',
-    },
-    errorInput: {
-        borderColor: '#EF4444',
-    },
-    disabledInput: {
-        backgroundColor: '#F9FAFB',
-        color: '#9CA3AF',
-        borderColor: '#E5E7EB',
-    },
-    errorText: {
-        color: '#EF4444',
-        fontSize: 12,
-        marginTop: 8,
-    },
-    helperText: {
-        color: '#6B7280',
-        fontSize: 12,
-        marginTop: 8,
-    },
-    datePickerButton: {
-        height: 56,
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    placeholderText: {
-        color: '#9CA3AF',
-    },
-    dateText: {
-        color: '#1F2937',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    datePickerContainer: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        paddingBottom: 20,
-    },
-    datePickerHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    cancelText: {
-        color: '#6B7280',
-    },
-    doneText: {
-        color: '#008751',
-    },
-    passwordContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderRadius: 8,
-        height: 56,
-        backgroundColor: '#FFFFFF',
-        overflow: 'hidden',
-        borderColor: '#E5E7EB',
-    },
-    passwordInput: {
-        flex: 1,
-        height: '100%',
-        paddingHorizontal: 16,
-        fontSize: 16,
-    },
-    passwordToggle: {
-        paddingHorizontal: 16,
-    },
-    showHideText: {
-        color: '#008751',
-    },
-    submitButton: {
-        height: 56,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 32,
-    },
-    activeButton: {
-        backgroundColor: '#008751',
-    },
-    disabledButton: {
-        backgroundColor: '#D1D5DB',
-    },
-    buttonText: {
-        color: '#FFFFFF',
-    },
-}); 
+} 

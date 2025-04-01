@@ -1,27 +1,43 @@
-import { View, TouchableOpacity, Image, SafeAreaView, StyleSheet } from 'react-native'
-import React from 'react'
+import { View, TouchableOpacity, Image, SafeAreaView, StyleSheet, ActivityIndicator } from 'react-native'
+import React, { useState } from 'react'
 import { MotiView } from 'moti'
 import { router } from 'expo-router'
 import { useAuth } from '@/providers/AuthProvider'
 import Text from '@/components/ui/Text'
 
 export default function IntroScreen() {
-    const { isLoading } = useAuth()
+    const { isLoading: authLoading } = useAuth()
+    const [isNavigating, setIsNavigating] = useState(false)
 
-    // Navigate to login screen
+    // Navigate to login screen with safety checks
     const handleLogin = () => {
-        router.push('/(auth)/login')
+        if (isNavigating) return; // Prevent multiple taps
+        setIsNavigating(true);
+
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+            router.push('/(auth)/login');
+            setIsNavigating(false);
+        }, 100);
     }
 
-    // Navigate to signup screen
+    // Navigate to signup screen with safety checks
     const handleSignUp = () => {
-        router.push('/(auth)/signup/email')
+        if (isNavigating) return; // Prevent multiple taps
+        setIsNavigating(true);
+
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+            router.push('/(auth)/signup/email');
+            setIsNavigating(false);
+        }, 100);
     }
 
-    if (isLoading) {
+    if (authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <Text>Loading...</Text>
+                <ActivityIndicator size="large" color="#008751" />
+                <Text style={{ marginTop: 10 }}>Loading...</Text>
             </View>
         )
     }
@@ -46,15 +62,25 @@ export default function IntroScreen() {
                     <TouchableOpacity
                         style={styles.loginButton}
                         onPress={handleLogin}
+                        disabled={isNavigating}
                     >
-                        <Text weight="medium" style={styles.loginButtonText}>Login</Text>
+                        {isNavigating ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                            <Text weight="medium" style={styles.loginButtonText}>Login</Text>
+                        )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.signUpButton}
                         onPress={handleSignUp}
+                        disabled={isNavigating}
                     >
-                        <Text weight="medium" style={styles.signUpButtonText}>Sign Up</Text>
+                        {isNavigating ? (
+                            <ActivityIndicator color="#008751" size="small" />
+                        ) : (
+                            <Text weight="medium" style={styles.signUpButtonText}>Sign Up</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </MotiView>

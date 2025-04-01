@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, SafeAreaView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
-import { Ionicons } from '@expo/vector-icons';
+import BackButton from '@/components/global/back-button';
+import Button from '@/components/global/button';
+import GoogleIcon from '@assets/icons/GoogleIcon.svg';
 
 export default function EmailSignUpScreen() {
     const [email, setEmail] = useState('');
@@ -45,184 +47,82 @@ export default function EmailSignUpScreen() {
         console.log('Sign up with Google');
     };
 
-    // Go back
-    const handleBack = () => {
-        router.back();
-    };
-
     return (
-        <SafeAreaView style={styles.container}>
-            <MotiView
-                from={{ opacity: 0, translateY: 10 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ type: 'timing', duration: 300 }}
-                style={styles.content}
+        <SafeAreaView className="flex-1 bg-white">
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1"
             >
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={handleBack}
+                <ScrollView
+                    className="flex-1"
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    keyboardShouldPersistTaps="handled"
                 >
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
+                    <MotiView
+                        from={{ opacity: 0, translateY: 10 }}
+                        animate={{ opacity: 1, translateY: 0 }}
+                        transition={{ type: 'timing', duration: 300 }}
+                        className="flex-1 px-6 pt-6"
+                    >
+                        <Text className="text-[22px] font-medium mb-8">What's your email address?</Text>
 
-                <Text weight="bold" style={styles.title}>What's your email address?</Text>
+                        <View className="mb-8 z-10">
+                            <TextInput
+                                className={`h-14 border ${!isValidEmail ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base`}
+                                placeholder="Email"
+                                value={email}
+                                onChangeText={handleEmailChange}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoComplete="email"
+                                returnKeyType="next"
+                                placeholderTextColor="#AAAAAA"
+                            />
+                            {!isValidEmail && (
+                                <Text weight="regular" className="text-red-500 text-xs mt-2">
+                                    Please enter a valid email address
+                                </Text>
+                            )}
+                        </View>
 
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            !isValidEmail && styles.inputError
-                        ]}
-                        placeholder="Email"
-                        value={email}
-                        onChangeText={handleEmailChange}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        returnKeyType="next"
-                        placeholderTextColor="#AAAAAA"
-                    />
-                    {!isValidEmail && (
-                        <Text weight="regular" style={styles.errorText}>
-                            Please enter a valid email address
-                        </Text>
-                    )}
+                        <Button
+                            onPress={handleContinue}
+                            disabled={!email || !isValidEmail}
+                            isLoading={isLoading}
+                        >
+                            Continue
+                        </Button>
+
+                        <View className="flex-row items-center my-6">
+                            <View className="flex-1 h-px bg-gray-200" />
+                            <Text weight="regular" className="mx-4 text-gray-500 text-sm">or</Text>
+                            <View className="flex-1 h-px bg-gray-200" />
+                        </View>
+
+                        <Button
+                            variant="outline"
+                            onPress={handleGoogleSignUp}
+                            disabled={!email || !isValidEmail}
+                            icon={<GoogleIcon />}
+                        >
+                            Continue with Google
+                        </Button>
+
+                        <View className="mt-4 mb-6">
+                            <Text weight="regular" className="text-secondary-caption text-sm">
+                                By continuing, you agree to our{' '}
+                                <Text weight="medium" className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-0.5">Terms of Service</Text>
+                                {' '}and{' '}
+                                <Text weight="medium" className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-5">Privacy Policy</Text>
+                            </Text>
+                        </View>
+                    </MotiView>
+                </ScrollView>
+
+                <View className="absolute bottom-8 left-5 z-50">
+                    <BackButton />
                 </View>
-
-                <TouchableOpacity
-                    style={[
-                        styles.continueButton,
-                        (!email || !isValidEmail || isLoading) && styles.disabledButton
-                    ]}
-                    onPress={handleContinue}
-                    disabled={!email || !isValidEmail || isLoading}
-                >
-                    {isLoading ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                        <Text weight="medium" style={styles.buttonText}>Continue</Text>
-                    )}
-                </TouchableOpacity>
-
-                <View style={styles.dividerContainer}>
-                    <View style={styles.divider} />
-                    <Text weight="regular" style={styles.dividerText}>or</Text>
-                    <View style={styles.divider} />
-                </View>
-
-                <TouchableOpacity
-                    style={styles.googleButton}
-                    onPress={handleGoogleSignUp}
-                >
-                    <Ionicons name="logo-google" size={24} color="#4285F4" style={styles.googleIcon} />
-                    <Text weight="medium" style={styles.googleButtonText}>Continue with Google</Text>
-                </TouchableOpacity>
-
-                <View style={styles.footer}>
-                    <Text weight="regular" style={styles.footerText}>
-                        By continuing, you agree to our{' '}
-                        <Text weight="medium" style={styles.linkText}>Terms of Service</Text>
-                        {' '}and{' '}
-                        <Text weight="medium" style={styles.linkText}>Privacy Policy</Text>
-                    </Text>
-                </View>
-            </MotiView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
-}
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    content: {
-        flex: 1,
-        padding: 24,
-    },
-    backButton: {
-        marginBottom: 24,
-    },
-    title: {
-        fontSize: 24,
-        marginBottom: 32,
-    },
-    inputContainer: {
-        marginBottom: 32,
-        zIndex: 1,
-    },
-    input: {
-        height: 56,
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        fontSize: 16,
-    },
-    inputError: {
-        borderColor: '#FF3B30',
-    },
-    errorText: {
-        color: '#FF3B30',
-        fontSize: 12,
-        marginTop: 8,
-    },
-    continueButton: {
-        height: 56,
-        backgroundColor: '#008751',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 32,
-    },
-    disabledButton: {
-        backgroundColor: '#CCCCCC',
-    },
-    buttonText: {
-        color: 'white',
-        fontSize: 16,
-    },
-    dividerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 24,
-    },
-    divider: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#E5E5E5',
-    },
-    dividerText: {
-        marginHorizontal: 16,
-        color: '#888888',
-        fontSize: 14,
-    },
-    googleButton: {
-        height: 56,
-        flexDirection: 'row',
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    googleIcon: {
-        marginRight: 8,
-    },
-    googleButtonText: {
-        color: '#333333',
-        fontSize: 16,
-    },
-    footer: {
-        marginTop: 16,
-    },
-    footerText: {
-        textAlign: 'center',
-        color: '#888888',
-        fontSize: 14,
-    },
-    linkText: {
-        color: '#008751',
-    },
-}); 
+} 

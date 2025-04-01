@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
 import { Ionicons } from '@expo/vector-icons';
+import BackButton from '@/components/global/back-button';
 
 // OTP input length
 const OTP_LENGTH = 4;
@@ -144,209 +145,104 @@ export default function VerifyScreen() {
         }
     };
 
-    // Go back
-    const handleBack = () => {
-        router.back();
-    };
-
     return (
-        <SafeAreaView style={styles.container}>
-            <MotiView
-                from={{ opacity: 0, translateY: 10 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ type: 'timing', duration: 300 }}
-                style={styles.content}
+        <SafeAreaView className="flex-1 bg-white">
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1"
             >
-                <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
-
-                <Text weight="bold" style={styles.title}>Enter code</Text>
-
-                <Text weight="regular" style={styles.subtitle}>
-                    Enter the 4-digit code sent to you at:
-                    {'\n'}{email}
-                </Text>
-
-                {verificationSuccess ? (
-                    <View style={styles.successContainer}>
-                        <View style={styles.successBanner}>
-                            <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                            <Text weight="medium" style={styles.successText}>Code sent</Text>
-                            <TouchableOpacity onPress={() => setVerificationSuccess(false)}>
-                                <Ionicons name="close" size={20} color="#FFFFFF" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.otpContainer}>
-                            {otp.map((digit, index) => (
-                                <View
-                                    key={index}
-                                    style={styles.otpBoxFilled}
-                                >
-                                    <Text weight="bold" style={styles.otpText}>{digit}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                ) : (
-                    <View style={styles.otpContainer}>
-                        {otp.map((digit, index) => (
-                            <TextInput
-                                key={index}
-                                ref={(ref) => (inputRefs.current[index] = ref)}
-                                style={[
-                                    styles.otpBox,
-                                    digit ? styles.otpBoxFilled : {},
-                                    currentIndex === index ? styles.otpBoxActive : {},
-                                    verificationError ? styles.otpBoxError : {},
-                                ]}
-                                value={digit}
-                                onChangeText={(text) => handleOtpChange(text, index)}
-                                onKeyPress={(e) => handleKeyPress(e, index)}
-                                keyboardType="number-pad"
-                                maxLength={1}
-                                selectTextOnFocus
-                                caretHidden
-                            />
-                        ))}
-                    </View>
-                )}
-
-                <Text weight="regular" style={styles.tipText}>
-                    Tip: For this demo, use code 1234
-                </Text>
-
-                <TouchableOpacity
-                    style={styles.resendButton}
-                    onPress={handleResendOtp}
-                    disabled={resendCountdown > 0 || isLoading}
+                <ScrollView
+                    className="flex-1"
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    keyboardShouldPersistTaps="handled"
                 >
-                    <Text
-                        weight="medium"
-                        style={resendCountdown > 0 ? styles.resendTextDisabled : styles.resendText}
+                    <MotiView
+                        from={{ opacity: 0, translateY: 10 }}
+                        animate={{ opacity: 1, translateY: 0 }}
+                        transition={{ type: 'timing', duration: 300 }}
+                        className="flex-1 px-6 pt-6"
                     >
-                        Resend code{resendCountdown > 0 ? ` in ${resendCountdown}s` : ''}
-                    </Text>
-                </TouchableOpacity>
+                        <Text weight="bold" className="text-2xl mb-3">Enter code</Text>
 
-                {isLoading && (
-                    <View style={styles.loadingOverlay}>
-                        <ActivityIndicator size="large" color="#008751" />
-                        <Text weight="medium" style={styles.loadingText}>Verifying...</Text>
-                    </View>
-                )}
-            </MotiView>
+                        <Text weight="regular" className="text-gray-600 mb-8">
+                            Enter the 4-digit code sent to you at:
+                            {'\n'}{email}
+                        </Text>
+
+                        {verificationSuccess ? (
+                            <View className="mb-8">
+                                <View className="bg-green-500 flex-row items-center justify-between rounded-lg px-4 py-3 mb-4">
+                                    <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                                    <Text weight="medium" className="text-white mx-2 flex-1">Code verified</Text>
+                                    <TouchableOpacity onPress={() => setVerificationSuccess(false)}>
+                                        <Ionicons name="close" size={20} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View className="flex-row justify-center space-x-4">
+                                    {otp.map((digit, index) => (
+                                        <View
+                                            key={index}
+                                            className="w-14 h-14 rounded-lg bg-gray-100 border border-green-500 items-center justify-center"
+                                        >
+                                            <Text weight="bold" className="text-xl">{digit}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : (
+                            <View className="flex-row justify-center space-x-4 mb-8">
+                                {otp.map((digit, index) => (
+                                    <TextInput
+                                        key={index}
+                                        ref={(ref) => (inputRefs.current[index] = ref)}
+                                        className={`w-14 h-14 rounded-lg text-center text-xl ${digit ? 'bg-gray-100 border border-gray-300' : 'border border-gray-200'
+                                            } ${currentIndex === index ? 'border-[#008751]' : ''
+                                            } ${verificationError ? 'border-red-500' : ''
+                                            }`}
+                                        value={digit}
+                                        onChangeText={(text) => handleOtpChange(text, index)}
+                                        onKeyPress={(e) => handleKeyPress(e, index)}
+                                        keyboardType="number-pad"
+                                        maxLength={1}
+                                        selectTextOnFocus
+                                        caretHidden
+                                    />
+                                ))}
+                            </View>
+                        )}
+
+                        <Text weight="regular" className="text-gray-600 text-center mb-6">
+                            Tip: For this demo, use code 1234
+                        </Text>
+
+                        <TouchableOpacity
+                            className="py-3 px-4"
+                            onPress={handleResendOtp}
+                            disabled={resendCountdown > 0 || isLoading}
+                        >
+                            <Text
+                                weight="medium"
+                                className={`text-center ${resendCountdown > 0 ? 'text-gray-400' : 'text-[#008751]'}`}
+                            >
+                                Resend code{resendCountdown > 0 ? ` in ${resendCountdown}s` : ''}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {isLoading && (
+                            <View className="absolute inset-0 bg-white/80 items-center justify-center">
+                                <ActivityIndicator size="large" color="#008751" />
+                                <Text weight="medium" className="mt-4 text-gray-700">Verifying...</Text>
+                            </View>
+                        )}
+                    </MotiView>
+                </ScrollView>
+            </KeyboardAvoidingView>
+
+            {/* Back button with position controlled by parent */}
+            <View className="absolute bottom-8 left-8 z-50">
+                <BackButton />
+            </View>
         </SafeAreaView>
     );
-}
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    content: {
-        flex: 1,
-        padding: 24,
-    },
-    backButton: {
-        marginBottom: 24,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 12,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#666666',
-        marginBottom: 32,
-        lineHeight: 24,
-    },
-    otpContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-    },
-    otpBox: {
-        width: 70,
-        height: 70,
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontSize: 24,
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
-    otpBoxActive: {
-        borderColor: '#008751',
-        borderWidth: 2,
-    },
-    otpBoxFilled: {
-        width: 70,
-        height: 70,
-        borderWidth: 1,
-        borderColor: '#008751',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F6FBF9',
-    },
-    otpBoxError: {
-        borderColor: '#FF3B30',
-    },
-    otpText: {
-        fontSize: 24,
-        color: '#333333',
-    },
-    tipText: {
-        fontSize: 12,
-        color: '#888888',
-        marginBottom: 20,
-    },
-    resendButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-    },
-    resendText: {
-        color: '#008751',
-    },
-    resendTextDisabled: {
-        color: '#AAAAAA',
-    },
-    successContainer: {
-        marginBottom: 20,
-    },
-    successBanner: {
-        flexDirection: 'row',
-        backgroundColor: '#008751',
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    successText: {
-        color: '#FFFFFF',
-        flex: 1,
-        marginLeft: 10,
-    },
-    loadingOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: 16,
-        color: '#008751',
-    },
-}); 
+} 
