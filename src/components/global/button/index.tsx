@@ -109,7 +109,7 @@ const Button = ({
       <TouchableOpacity
         onPress={onPress}
         className={cn(
-          'w-full transition-all mx-auto flex flex-row items-center justify-center',
+          'transition-all flex flex-row items-center justify-center',
           getButtonSize(),
           getButtonStyle(),
           className,

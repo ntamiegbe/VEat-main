@@ -2,32 +2,28 @@ import React, { useState } from 'react';
 import {
     View,
     TouchableOpacity,
-    SafeAreaView,
-    ActivityIndicator,
-    ScrollView,
-    KeyboardAvoidingView,
-    Platform,
-    Modal
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { MotiView } from 'moti';
 import Text from '@/components/ui/Text';
 import Input from '@/components/global/input';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import BackButton from '@/components/global/back-button';
+import DatePicker from '@/components/global/date-picker';
 import { supabase } from '@/lib/supabase';
 import { useForm, FormProvider } from 'react-hook-form';
+import { AuthLayout } from '@/components/layouts/auth-layout';
+import CalendarIcon from '@assets/icons/CalendarIcon.svg';
 
 type FormData = {
     firstName: string;
     lastName: string;
     phoneNumber: string;
     password?: string;
+    email: string;
 };
+
 
 export default function ProfileScreen() {
     // Get params from Google sign-up
-    const { email, userId, fullName } = useLocalSearchParams();
+    const { email, userId } = useLocalSearchParams();
 
     // Form state with React Hook Form
     const methods = useForm<FormData>({
@@ -36,6 +32,7 @@ export default function ProfileScreen() {
             lastName: '',
             phoneNumber: '',
             password: '',
+            email: email as string,
         }
     });
 
@@ -47,26 +44,12 @@ export default function ProfileScreen() {
     // Format date for display
     const formatDate = (date: Date | null) => {
         if (!date) return '';
-        return `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()}${getOrdinalSuffix(date.getDate())}`;
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
     };
 
-    // Get ordinal suffix for date (1st, 2nd, 3rd, etc.)
-    const getOrdinalSuffix = (day: number) => {
-        if (day > 3 && day < 21) return 'th';
-        switch (day % 10) {
-            case 1: return 'st';
-            case 2: return 'nd';
-            case 3: return 'rd';
-            default: return 'th';
-        }
-    };
-
-    // Handle date change
-    const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShowDatePicker(Platform.OS === 'ios');
-        if (selectedDate) {
-            setBirthdate(selectedDate);
-        }
+    // Handle date selection
+    const handleDateSelect = (date: Date) => {
+        setBirthdate(date);
     };
 
     // Handle form submission
@@ -79,19 +62,17 @@ export default function ProfileScreen() {
         setIsLoading(true);
 
         try {
-            // For users who signed up with Google
-            if (userId) {
-                const { error } = await supabase.auth.updateUser({
-                    data: {
-                        phone_number: data.phoneNumber,
-                        first_name: data.firstName,
-                        last_name: data.lastName,
-                        birthdate: birthdate ? birthdate.toISOString() : null
-                    }
-                });
+            const { error } = await supabase.auth.updateUser({
+                data: {
+                    phone_number: data.phoneNumber,
+                    first_name: data.firstName,
+                    last_name: data.lastName,
+                    birthdate: birthdate ? birthdate.toISOString() : null,
+                    password: data.password
+                }
+            });
 
-                if (error) throw error;
-            }
+            if (error) throw error;
 
             // Navigate to app's main screen
             router.replace('/(app)');
@@ -104,149 +85,81 @@ export default function ProfileScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1"
-            >
-                <ScrollView
-                    className="flex-1"
-                    contentContainerStyle={{ flexGrow: 1 }}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <MotiView
-                        from={{ opacity: 0, translateY: 10 }}
-                        animate={{ opacity: 1, translateY: 0 }}
-                        transition={{ type: 'timing', duration: 300 }}
-                        className="flex-1 px-6 pt-6"
-                    >
-                        <Text className="text-tc-primary text-[22px] font-medium mb-6">You're almost done!</Text>
-                        <Text weight="regular" className="text-secondary-subtext text-sm mb-6">Let's get to meet you</Text>
+        <AuthLayout
+            continueButton={{
+                onPress: methods.handleSubmit(onSubmit),
+                disabled: isLoading,
+                text: 'Continue'
+            }}
+        >
+            <FormProvider {...methods}>
+                <Text className="text-tc-primary text-[22px] font-medium mb-6">You're almost done!</Text>
+                <Text weight="regular" className="text-secondary-subtext text-sm mb-6">Let's get to meet you</Text>
 
-                        <FormProvider {...methods}>
-                            {/* Full Name */}
-                            <View className="flex-row gap-4 mb-4">
-                                <View className="flex-1">
-                                    <Input
-                                        name="firstName"
-                                        label="First name"
-                                        rules={['required']}
-                                    />
-                                </View>
+                {/* Full Name */}
+                <View className="flex-row gap-4 mb-6">
+                    <View className="flex-1">
+                        <Input
+                            name="firstName"
+                            label="First name"
+                            rules={['required']}
+                        />
+                    </View>
 
-                                <View className="flex-1">
-                                    <Input
-                                        name="lastName"
-                                        label="Last name"
-                                    />
-                                </View>
-                            </View>
-
-                            {/* Phone Number */}
-                            <View className="mb-4">
-                                <Input
-                                    name="phoneNumber"
-                                    label="Phone number"
-                                    rules={['required', 'phone']}
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
-
-                            {/* Date of Birth */}
-                            <View className="mb-4">
-                                <TouchableOpacity
-                                    className={`h-14 border border-gray-200 rounded-lg px-4 justify-center mb-1`}
-                                    onPress={() => setShowDatePicker(true)}
-                                >
-                                    <Text className={birthdate ? 'text-black' : 'text-gray-400'}>
-                                        {birthdate ? formatDate(birthdate) : 'Date of birth'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Password (only shown for non-OAuth users) */}
-                            {!userId && (
-                                <View className="mb-4">
-                                    <Input
-                                        name="password"
-                                        label="Password"
-                                        rules={['password']}
-                                        secureTextEntry
-                                    />
-                                </View>
-                            )}
-
-                            {/* Submit button */}
-                            <TouchableOpacity
-                                onPress={methods.handleSubmit(onSubmit)}
-                                className={`h-14 rounded-lg justify-center items-center mt-4 mb-6 ${isLoading ? 'bg-primary-300' : 'bg-primary-500'}`}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <Text weight="medium" className="text-white text-base">
-                                        Complete Sign Up
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-                        </FormProvider>
-                    </MotiView>
-                </ScrollView>
-
-                <View className="absolute bottom-8 left-5 z-50">
-                    <BackButton />
+                    <View className="flex-1">
+                        <Input
+                            name="lastName"
+                            label="Last name"
+                        />
+                    </View>
                 </View>
 
-                {/* Date Picker Modal for iOS */}
-                {Platform.OS === 'ios' && (
-                    <Modal
-                        visible={showDatePicker}
-                        transparent={true}
-                        animationType="slide"
-                    >
-                        <View className="flex-1 justify-end bg-black/30">
-                            <View className="bg-white p-4">
-                                <View className="flex-row justify-between mb-4">
-                                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                        <Text weight="medium" className="text-primary-500">Cancel</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setShowDatePicker(false);
-                                            if (!birthdate) {
-                                                setBirthdate(new Date());
-                                            }
-                                        }}
-                                    >
-                                        <Text weight="medium" className="text-primary-500">Done</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <DateTimePicker
-                                    value={birthdate || new Date()}
-                                    mode="date"
-                                    display="spinner"
-                                    onChange={handleDateChange}
-                                    maximumDate={new Date()}
-                                    minimumDate={new Date(1900, 0, 1)}
-                                />
-                            </View>
-                        </View>
-                    </Modal>
-                )}
-
-                {/* Date Picker for Android */}
-                {Platform.OS === 'android' && showDatePicker && (
-                    <DateTimePicker
-                        value={birthdate || new Date()}
-                        mode="date"
-                        display="default"
-                        onChange={handleDateChange}
-                        maximumDate={new Date()}
-                        minimumDate={new Date(1900, 0, 1)}
+                {/* Phone Number */}
+                <View className="mb-6">
+                    <Input
+                        name="phoneNumber"
+                        label="Phone number"
+                        rules={['required', 'phone']}
+                        keyboardType="phone-pad"
                     />
-                )}
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                </View>
+
+                {/* Date of Birth */}
+                <View className="mb-6">
+                    <TouchableOpacity
+                        className="h-14 border border-gray-200 rounded-lg px-4 flex-row items-center justify-between bg-white"
+                        onPress={() => setShowDatePicker(true)}
+                        activeOpacity={0.7}
+                    >
+                        <Text className={birthdate ? 'text-gray-900' : 'text-gray-400'}>
+                            {birthdate ? formatDate(birthdate) : 'Birthday'}
+                        </Text>
+                        <CalendarIcon />
+                    </TouchableOpacity>
+                </View>
+
+                <View className="mb-6">
+                    <Input
+                        name="password"
+                        label="Password"
+                        rules={['password']}
+                        secureTextEntry
+                    />
+                </View>
+
+                {/* Submit button */}
+                <View className="flex-1" />
+            </FormProvider>
+
+            {/* Date Picker */}
+            <DatePicker
+                value={birthdate}
+                onChange={handleDateSelect}
+                onClose={() => setShowDatePicker(false)}
+                maxDate={new Date()}
+                minDate={new Date(1900, 0, 1)}
+                visible={showDatePicker}
+            />
+        </AuthLayout>
     );
 } 

@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { View, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { MotiView } from 'moti';
 import { FormProvider, useForm } from 'react-hook-form';
 import Text from '@/components/ui/Text';
-import BackButton from '@/components/global/back-button';
 import Button from '@/components/global/button';
 import Input from '@/components/global/input';
 import GoogleIcon from '@assets/icons/GoogleIcon.svg';
@@ -12,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
+import { AuthLayout } from '@/components/layouts/auth-layout';
 
 // Register for the authentication callback
 WebBrowser.maybeCompleteAuthSession();
@@ -139,75 +138,53 @@ export default function EmailSignUpScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1"
-            >
-                <ScrollView
-                    className="flex-1"
-                    contentContainerStyle={{ flexGrow: 1 }}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <MotiView
-                        from={{ opacity: 0, translateY: 10 }}
-                        animate={{ opacity: 1, translateY: 0 }}
-                        transition={{ type: 'timing', duration: 300 }}
-                        className="flex-1 px-6 pt-6"
-                    >
-                        <Text className="text-tc-primary text-[22px] font-medium mb-8">What's your email address?</Text>
+        <AuthLayout>
+            <Text className="text-tc-primary text-[22px] font-medium mb-8">What's your email address?</Text>
 
-                        <FormProvider {...methods}>
-                            <View className="mb-8 z-10">
-                                <Input
-                                    name="email"
-                                    label="Email"
-                                    type="email"
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    rules={['required', 'email']}
-                                />
-                            </View>
-                        </FormProvider>
-
-                        <Button
-                            onPress={handleContinue}
-                            disabled={!isFormValid}
-                            isLoading={formState.isSubmitting}
-                        >
-                            Continue
-                        </Button>
-
-                        <View className="flex-row items-center my-6">
-                            <View className="flex-1 h-px bg-gray-200" />
-                            <Text weight="regular" className="mx-4 text-gray-500 text-sm">or</Text>
-                            <View className="flex-1 h-px bg-gray-200" />
-                        </View>
-
-                        <Button
-                            variant="outline"
-                            onPress={handleGoogleSignUp}
-                            isLoading={isGoogleLoading}
-                            icon={<GoogleIcon />}
-                        >
-                            Continue with Google
-                        </Button>
-
-                        <View className="mt-4 mb-6">
-                            <Text weight="regular" className="text-secondary-caption text-sm">
-                                By continuing, you agree to our{' '}
-                                <Text weight="medium" className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-0.5">Terms of Service</Text>
-                                {' '}and{' '}
-                                <Text weight="medium" className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-5">Privacy Policy</Text>
-                            </Text>
-                        </View>
-                    </MotiView>
-                </ScrollView>
-
-                <View className="absolute bottom-8 left-5 z-50">
-                    <BackButton />
+            <FormProvider {...methods}>
+                <View className="mb-8 z-10">
+                    <Input
+                        name="email"
+                        label="Email"
+                        type="email"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        rules={['required', 'email']}
+                    />
                 </View>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+            </FormProvider>
+
+            <Button
+                onPress={handleContinue}
+                disabled={!isFormValid}
+                isLoading={formState.isSubmitting}
+            >
+                Continue
+            </Button>
+
+            <View className="flex-row items-center my-6">
+                <View className="flex-1 h-px bg-gray-200" />
+                <Text weight="regular" className="mx-4 text-gray-500 text-sm">or</Text>
+                <View className="flex-1 h-px bg-gray-200" />
+            </View>
+
+            <Button
+                variant="outline"
+                onPress={handleGoogleSignUp}
+                isLoading={isGoogleLoading}
+                icon={<GoogleIcon />}
+            >
+                Continue with Google
+            </Button>
+
+            <View className="mt-4 mb-6">
+                <Text weight="regular" className="text-secondary-caption text-sm">
+                    By continuing, you agree to our{' '}
+                    <Text weight="medium" className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-0.5">Terms of Service</Text>
+                    {' '}and{' '}
+                    <Text weight="medium" className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-5">Privacy Policy</Text>
+                </Text>
+            </View>
+        </AuthLayout>
     );
 } 

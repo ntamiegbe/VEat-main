@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, SafeAreaView, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { MotiView } from 'moti';
 import { Snackbar } from 'react-native-paper';
 import Text from '@/components/ui/Text';
 import OTPInput from '@/components/ui/OTPInput';
 import { Ionicons } from '@expo/vector-icons';
-import BackButton from '@/components/global/back-button';
 import { ActivityIndicator } from 'react-native-paper';
+import { AuthLayout } from '@/components/layouts/auth-layout';
 
 // OTP input length
 const OTP_LENGTH = 4;
@@ -142,59 +141,36 @@ export default function VerifyScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1"
-            >
-                <ScrollView
-                    className="flex-1"
-                    contentContainerStyle={{ flexGrow: 1 }}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <MotiView
-                        from={{ opacity: 0, translateY: 10 }}
-                        animate={{ opacity: 1, translateY: 0 }}
-                        transition={{ type: 'timing', duration: 300 }}
-                        className="flex-1 px-6 pt-6"
-                    >
-                        <Text className="text-tc-primary text-[22px] font-medium mb-6">Enter code</Text>
+        <AuthLayout>
+            <Text className="text-tc-primary text-[22px] font-medium mb-6">Enter code</Text>
 
-                        <Text weight="regular" className="text-secondary-subtext text-sm mb-6">
-                            Enter the 4-digit code sent to you at:
-                            {'\n'}<Text weight="bold">{email}</Text>
-                        </Text>
+            <Text weight="regular" className="text-secondary-subtext text-sm mb-6">
+                Enter the 4-digit code sent to you at:
+                {'\n'}<Text weight="bold">{email}</Text>
+            </Text>
 
-                        <View className="mb-6 flex-row items-center gap-4">
-                            <OTPInput
-                                length={OTP_LENGTH}
-                                value={otp}
-                                onChange={handleOtpChange}
-                                onComplete={handleOtpComplete}
-                                autoFocus={true}
-                                isError={verificationError}
-                                isLoading={isLoading}
-                            />
-                        </View>
-
-                        <Text weight="regular" className="text-secondary-caption text-xs mb-4 leading-normal">
-                            Tip: Be sure to check your inbox and spam folders
-                        </Text>
-
-                        <TouchableOpacity
-                            onPress={handleResendOtp}
-                            disabled={resendCountdown > 0 || isResending}
-                        >
-                            {renderResendButton()}
-                        </TouchableOpacity>
-                    </MotiView>
-                </ScrollView>
-            </KeyboardAvoidingView>
-
-            {/* Back button with position controlled by parent */}
-            <View className="absolute bottom-8 left-5 z-50">
-                <BackButton />
+            <View className="mb-6 flex-row items-center gap-4">
+                <OTPInput
+                    length={OTP_LENGTH}
+                    value={otp}
+                    onChange={handleOtpChange}
+                    onComplete={handleOtpComplete}
+                    autoFocus={true}
+                    isError={verificationError}
+                    isLoading={isLoading}
+                />
             </View>
+
+            <Text weight="regular" className="text-secondary-caption text-xs mb-4 leading-normal">
+                Tip: Be sure to check your inbox and spam folders
+            </Text>
+
+            <TouchableOpacity
+                onPress={handleResendOtp}
+                disabled={resendCountdown > 0 || isResending}
+            >
+                {renderResendButton()}
+            </TouchableOpacity>
 
             {/* Toast Notification */}
             <Snackbar
@@ -215,6 +191,6 @@ export default function VerifyScreen() {
                     {toast.message}
                 </Text>
             </Snackbar>
-        </SafeAreaView>
+        </AuthLayout>
     );
 } 
