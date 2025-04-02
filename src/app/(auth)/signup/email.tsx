@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { MotiView } from 'moti';
+import { FormProvider, useForm } from 'react-hook-form';
 import Text from '@/components/ui/Text';
 import BackButton from '@/components/global/back-button';
 import Button from '@/components/global/button';
+import Input from '@/components/global/input';
 import GoogleIcon from '@assets/icons/GoogleIcon.svg';
 import { supabase } from '@/lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
@@ -15,39 +17,26 @@ import Constants from 'expo-constants';
 WebBrowser.maybeCompleteAuthSession();
 
 export default function EmailSignUpScreen() {
-    const [email, setEmail] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const [isValidEmail, setIsValidEmail] = useState(true);
 
-    // Validate email format
-    const validateEmail = (text: string) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(text);
-    };
+    const methods = useForm({
+        defaultValues: {
+            email: '',
+        },
+        mode: 'onChange',
+    });
 
-    // Handle email change
-    const handleEmailChange = (text: string) => {
-        setEmail(text);
-        setIsValidEmail(text === '' || validateEmail(text));
-    };
+    const { handleSubmit, watch, formState } = methods;
+    const email = watch('email');
+    const isFormValid = formState.isValid;
 
     // Continue with email
-    const handleContinue = () => {
-        if (email && validateEmail(email)) {
-            setIsLoading(true);
-            // Simulate API call
-            setTimeout(() => {
-                setIsLoading(false);
-                router.push({
-                    pathname: '/(auth)/signup/verify',
-                    params: { email }
-                });
-            }, 1000);
-        } else {
-            setIsValidEmail(false);
-        }
-    };
+    const handleContinue = handleSubmit((data) => {
+        router.push({
+            pathname: '/(auth)/signup/verify',
+            params: { email: data.email }
+        });
+    });
 
     // Handle Google Sign Up
     const handleGoogleSignUp = async () => {
@@ -166,31 +155,25 @@ export default function EmailSignUpScreen() {
                         transition={{ type: 'timing', duration: 300 }}
                         className="flex-1 px-6 pt-6"
                     >
-                        <Text className="text-[22px] font-medium mb-8">What's your email address?</Text>
+                        <Text className="text-tc-primary text-[22px] font-medium mb-8">What's your email address?</Text>
 
-                        <View className="mb-8 z-10">
-                            <TextInput
-                                className={`h-14 border ${!isValidEmail ? 'border-red-500' : 'border-gray-200'} rounded-lg px-4 text-base`}
-                                placeholder="Email"
-                                value={email}
-                                onChangeText={handleEmailChange}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoComplete="email"
-                                returnKeyType="next"
-                                placeholderTextColor="#AAAAAA"
-                            />
-                            {!isValidEmail && (
-                                <Text weight="regular" className="text-red-500 text-xs mt-2">
-                                    Please enter a valid email address
-                                </Text>
-                            )}
-                        </View>
+                        <FormProvider {...methods}>
+                            <View className="mb-8 z-10">
+                                <Input
+                                    name="email"
+                                    label="Email"
+                                    type="email"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    rules={['required', 'email']}
+                                />
+                            </View>
+                        </FormProvider>
 
                         <Button
                             onPress={handleContinue}
-                            disabled={!email || !isValidEmail}
-                            isLoading={isLoading}
+                            disabled={!isFormValid}
+                            isLoading={formState.isSubmitting}
                         >
                             Continue
                         </Button>
@@ -207,7 +190,7 @@ export default function EmailSignUpScreen() {
                             isLoading={isGoogleLoading}
                             icon={<GoogleIcon />}
                         >
-                            Sign up with Google
+                            Continue with Google
                         </Button>
 
                         <View className="mt-4 mb-6">

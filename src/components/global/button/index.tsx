@@ -1,7 +1,8 @@
 /* eslint-disable max-lines-per-function */
 import React, { useEffect } from 'react';
-import { LogBox, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { LogBox, Text, View, TouchableOpacity } from 'react-native';
 import { cn } from '@/core/utils';
+import { ActivityIndicator } from 'react-native-paper';
 
 type ButtonProps = {
   variant?: 'primary' | 'secondary' | 'outline' | 'plain';
@@ -89,9 +90,9 @@ const Button = ({
       case 'primary':
         return '#FFFFFF';
       case 'secondary':
-        return '#D97706';
+        return '#34AA87';
       case 'outline':
-        return '#D97706';
+        return '#34AA87';
       case 'plain':
         return '#000000';
       default:

@@ -1,10 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TouchableOpacity, SafeAreaView, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
+import { Snackbar } from 'react-native-paper';
 import Text from '@/components/ui/Text';
+import OTPInput from '@/components/ui/OTPInput';
 import { Ionicons } from '@expo/vector-icons';
 import BackButton from '@/components/global/back-button';
+import { ActivityIndicator } from 'react-native-paper';
 
 // OTP input length
 const OTP_LENGTH = 4;
@@ -16,35 +19,26 @@ export default function VerifyScreen() {
 
     // OTP state
     const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
-    const [currentIndex, setCurrentIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const [isResending, setIsResending] = useState(false);
     const [verificationSuccess, setVerificationSuccess] = useState(false);
     const [verificationError, setVerificationError] = useState(false);
-    const [resendCountdown, setResendCountdown] = useState(0);
-
-    // Refs for input fields
-    const inputRefs = useRef<Array<TextInput | null>>([]);
+    const [resendCountdown, setResendCountdown] = useState(60);
+    const [toast, setToast] = useState({ visible: false, message: '' });
 
     // Initialize countdown timer when component mounts
     useEffect(() => {
         startResendTimer();
-
-        // Auto-fill demo OTP after a short delay for demonstration
-        const autoFillTimeout = setTimeout(() => {
-            // Fill in the demo code one by one
-            DEMO_OTP.split('').forEach((digit, index) => {
-                setTimeout(() => {
-                    handleOtpChange(digit, index);
-                }, index * 300);
-            });
-        }, 1500);
-
-        return () => clearTimeout(autoFillTimeout);
+        // Show initial toast for code sent
+        setToast({
+            visible: true,
+            message: 'Verification code sent to your email'
+        });
     }, []);
 
     // Function to start the resend countdown timer
     const startResendTimer = () => {
-        setResendCountdown(19); // 19 seconds countdown
+        setResendCountdown(60);
         const timer = setInterval(() => {
             setResendCountdown((prevCount) => {
                 if (prevCount <= 1) {
@@ -59,34 +53,14 @@ export default function VerifyScreen() {
         return () => clearInterval(timer);
     };
 
-    // Handle OTP input change
-    const handleOtpChange = (text: string, index: number) => {
-        // Only allow digits
-        if (!/^\d*$/.test(text)) return;
-
-        // Update the OTP array
-        const newOtp = [...otp];
-        newOtp[index] = text.slice(-1); // Only take the last character if multiple are pasted
+    // Handle OTP change from the OTPInput component
+    const handleOtpChange = (newOtp: string[]) => {
         setOtp(newOtp);
-
-        // Auto-advance to next input if a digit was entered
-        if (text && index < OTP_LENGTH - 1) {
-            inputRefs.current[index + 1]?.focus();
-            setCurrentIndex(index + 1);
-        }
-
-        // If all digits are filled, verify the OTP
-        if (index === OTP_LENGTH - 1 && text) {
-            verifyOtp([...newOtp.slice(0, OTP_LENGTH - 1), text].join(''));
-        }
     };
 
-    // Handle backspace press to go to previous input
-    const handleKeyPress = (e: any, index: number) => {
-        if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-            inputRefs.current[index - 1]?.focus();
-            setCurrentIndex(index - 1);
-        }
+    // Handle OTP completion
+    const handleOtpComplete = (otpString: string) => {
+        verifyOtp(otpString);
     };
 
     // Verify the OTP
@@ -110,7 +84,10 @@ export default function VerifyScreen() {
                 } else {
                     setVerificationSuccess(false);
                     setVerificationError(true);
-                    Alert.alert('Invalid Code', 'For this demo, please use the code 1234');
+                    setToast({
+                        visible: true,
+                        message: 'Invalid verification code. Please try again.'
+                    });
                 }
                 setIsLoading(false);
             }, 1500);
@@ -118,31 +95,50 @@ export default function VerifyScreen() {
     };
 
     // Resend the OTP
-    const handleResendOtp = () => {
-        if (resendCountdown === 0) {
+    const handleResendOtp = async () => {
+        if (resendCountdown === 0 && !isResending) {
+            setIsResending(true);
+
+            // Simulate API call with 1.5s delay
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
             // Reset OTP fields
             setOtp(Array(OTP_LENGTH).fill(''));
-            setCurrentIndex(0);
             setVerificationError(false);
 
             // Start countdown again
             startResendTimer();
 
-            // Focus first input
-            inputRefs.current[0]?.focus();
+            // Show toast notification
+            setToast({
+                visible: true,
+                message: 'New verification code sent to your email'
+            });
 
-            // Show alert that code has been resent
-            Alert.alert('Demo Code', `For demonstration, use the code: ${DEMO_OTP}`);
-
-            // Auto-fill demo OTP after a short delay for demonstration
-            setTimeout(() => {
-                DEMO_OTP.split('').forEach((digit, index) => {
-                    setTimeout(() => {
-                        handleOtpChange(digit, index);
-                    }, index * 300);
-                });
-            }, 1500);
+            setIsResending(false);
         }
+    };
+
+    const renderResendButton = () => {
+        if (isResending) {
+            return (
+                <ActivityIndicator size="small" color="#34AA87" />
+            );
+        }
+
+        if (resendCountdown > 0) {
+            return (
+                <Text className="text-sm text-secondary-subtext">
+                    Resend code<Text weight="bold"> in {resendCountdown}s</Text>
+                </Text>
+            );
+        }
+
+        return (
+            <Text className="text-sm text-primary-main">
+                Resend code
+            </Text>
+        );
     };
 
     return (
@@ -162,87 +158,63 @@ export default function VerifyScreen() {
                         transition={{ type: 'timing', duration: 300 }}
                         className="flex-1 px-6 pt-6"
                     >
-                        <Text weight="bold" className="text-2xl mb-3">Enter code</Text>
+                        <Text className="text-tc-primary text-[22px] font-medium mb-6">Enter code</Text>
 
-                        <Text weight="regular" className="text-gray-600 mb-8">
+                        <Text weight="regular" className="text-secondary-subtext text-sm mb-6">
                             Enter the 4-digit code sent to you at:
-                            {'\n'}{email}
+                            {'\n'}<Text weight="bold">{email}</Text>
                         </Text>
 
-                        {verificationSuccess ? (
-                            <View className="mb-8">
-                                <View className="bg-green-500 flex-row items-center justify-between rounded-lg px-4 py-3 mb-4">
-                                    <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                                    <Text weight="medium" className="text-white mx-2 flex-1">Code verified</Text>
-                                    <TouchableOpacity onPress={() => setVerificationSuccess(false)}>
-                                        <Ionicons name="close" size={20} color="#FFFFFF" />
-                                    </TouchableOpacity>
-                                </View>
+                        <View className="mb-6 flex-row items-center gap-4">
+                            <OTPInput
+                                length={OTP_LENGTH}
+                                value={otp}
+                                onChange={handleOtpChange}
+                                onComplete={handleOtpComplete}
+                                autoFocus={true}
+                                isError={verificationError}
+                                isLoading={isLoading}
+                            />
+                        </View>
 
-                                <View className="flex-row justify-center space-x-4">
-                                    {otp.map((digit, index) => (
-                                        <View
-                                            key={index}
-                                            className="w-14 h-14 rounded-lg bg-gray-100 border border-green-500 items-center justify-center"
-                                        >
-                                            <Text weight="bold" className="text-xl">{digit}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            </View>
-                        ) : (
-                            <View className="flex-row justify-center space-x-4 mb-8">
-                                {otp.map((digit, index) => (
-                                    <TextInput
-                                        key={index}
-                                        ref={(ref) => (inputRefs.current[index] = ref)}
-                                        className={`w-14 h-14 rounded-lg text-center text-xl ${digit ? 'bg-gray-100 border border-gray-300' : 'border border-gray-200'
-                                            } ${currentIndex === index ? 'border-[#008751]' : ''
-                                            } ${verificationError ? 'border-red-500' : ''
-                                            }`}
-                                        value={digit}
-                                        onChangeText={(text) => handleOtpChange(text, index)}
-                                        onKeyPress={(e) => handleKeyPress(e, index)}
-                                        keyboardType="number-pad"
-                                        maxLength={1}
-                                        selectTextOnFocus
-                                        caretHidden
-                                    />
-                                ))}
-                            </View>
-                        )}
-
-                        <Text weight="regular" className="text-gray-600 text-center mb-6">
-                            Tip: For this demo, use code 1234
+                        <Text weight="regular" className="text-secondary-caption text-xs mb-4 leading-normal">
+                            Tip: Be sure to check your inbox and spam folders
                         </Text>
 
                         <TouchableOpacity
-                            className="py-3 px-4"
                             onPress={handleResendOtp}
-                            disabled={resendCountdown > 0 || isLoading}
+                            disabled={resendCountdown > 0 || isResending}
                         >
-                            <Text
-                                weight="medium"
-                                className={`text-center ${resendCountdown > 0 ? 'text-gray-400' : 'text-[#008751]'}`}
-                            >
-                                Resend code{resendCountdown > 0 ? ` in ${resendCountdown}s` : ''}
-                            </Text>
+                            {renderResendButton()}
                         </TouchableOpacity>
-
-                        {isLoading && (
-                            <View className="absolute inset-0 bg-white/80 items-center justify-center">
-                                <ActivityIndicator size="large" color="#008751" />
-                                <Text weight="medium" className="mt-4 text-gray-700">Verifying...</Text>
-                            </View>
-                        )}
                     </MotiView>
                 </ScrollView>
             </KeyboardAvoidingView>
 
             {/* Back button with position controlled by parent */}
-            <View className="absolute bottom-8 left-8 z-50">
+            <View className="absolute bottom-8 left-5 z-50">
                 <BackButton />
             </View>
+
+            {/* Toast Notification */}
+            <Snackbar
+                visible={toast.visible}
+                onDismiss={() => setToast({ ...toast, visible: false })}
+                duration={3000}
+                style={{
+                    backgroundColor: '#1F2937',
+                    position: 'absolute',
+                    bottom: 100,
+                    left: 16,
+                    right: 16,
+                    borderRadius: 8
+                }}
+                wrapperStyle={{ position: 'absolute', bottom: 0 }}
+            >
+                <Text className="text-white text-sm" weight="medium">
+                    {toast.message}
+                </Text>
+            </Snackbar>
         </SafeAreaView>
     );
 } 
