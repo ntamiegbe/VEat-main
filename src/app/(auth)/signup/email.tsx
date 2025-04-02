@@ -97,32 +97,37 @@ export default function EmailSignUpScreen() {
                     const { data: userData } = await supabase.auth.getUser();
 
                     if (userData?.user) {
+                        // Log the complete user data
+                        console.log('Google Sign In Response:', {
+                            user: userData.user,
+                            metadata: userData.user.user_metadata,
+                            appMetadata: userData.user.app_metadata,
+                            email: userData.user.email,
+                            fullName: userData.user.user_metadata?.full_name,
+                            phone: userData.user.user_metadata?.phone_number,
+                            birthday: userData.user.user_metadata?.birthday
+                        });
+
                         // Extract user metadata
                         const email = userData.user.email;
                         const fullName = userData.user.user_metadata?.full_name || '';
                         const userId = userData.user.id;
 
-                        // Try all navigation methods
-                        try {
-                            // Method 1: Use router.navigate
-                            router.navigate({
-                                pathname: '/(auth)/signup/profile',
-                                params: {
-                                    userId,
-                                    email: email || '',
-                                    fullName
-                                }
-                            });
-                        } catch (err) {
-                            // Method 2: Try direct linking
-                            try {
-                                const profileDeepLink = `${scheme}://signup/profile?userId=${userId}&email=${encodeURIComponent(email || '')}&fullName=${encodeURIComponent(fullName)}`;
-                                await Linking.openURL(profileDeepLink);
-                            } catch (linkErr) {
-                                // Method 3: Last resort - hard replace
-                                router.replace('/(auth)/signup/profile');
+                        // Split full name into first and last name
+                        const nameParts = fullName.split(' ');
+                        const firstName = nameParts[0] || '';
+                        const lastName = nameParts.slice(1).join(' ') || '';
+
+                        // Redirect to profile completion with separated names
+                        router.replace({
+                            pathname: '/(auth)/signup/profile',
+                            params: {
+                                email,
+                                userId,
+                                firstName,
+                                lastName
                             }
-                        }
+                        });
                     }
                 } else {
                     Alert.alert('Login Failed', 'Could not authenticate with Google. Please try again.');

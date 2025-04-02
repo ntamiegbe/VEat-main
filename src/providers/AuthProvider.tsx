@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
+import { router } from 'expo-router';
 
 type AuthContextType = {
     session: Session | null;
@@ -62,6 +63,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setIsLoading(true);
             if (supabase) {
                 await supabase.auth.signOut();
+                // Redirect to intro screen after successful sign out
+                router.replace('/(auth)/intro');
             }
         } catch (error) {
             console.error('Error signing out:', error);

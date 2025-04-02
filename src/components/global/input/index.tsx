@@ -332,7 +332,7 @@ const Input = ({
             onPress={togglePasswordVisibility}
             className="absolute right-4 top-1/2 -translate-y-1/2"
           >
-            <Text className="text-[14px] font-medium text-secondary-subtext">
+            <Text className="text-[14px] font-medium text-secondary-subtext underline">
               {!isPassword ? "Hide" : "Show"}
             </Text>
           </Pressable>

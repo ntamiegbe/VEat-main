@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     TouchableOpacity,
@@ -20,10 +20,10 @@ type FormData = {
     email: string;
 };
 
-
 export default function ProfileScreen() {
     // Get params from Google sign-up
-    const { email, userId } = useLocalSearchParams();
+    const { email, userId, firstName: googleFirstName, lastName: googleLastName } = useLocalSearchParams();
+    const [isGoogleUser, setIsGoogleUser] = useState(false);
 
     // Form state with React Hook Form
     const methods = useForm<FormData>({
@@ -40,6 +40,40 @@ export default function ProfileScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [birthdate, setBirthdate] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    // Check if user is from Google and get their data
+    useEffect(() => {
+        const checkGoogleUser = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user?.app_metadata?.provider === 'google') {
+                    setIsGoogleUser(true);
+
+                    // Update form with Google data
+                    methods.reset({
+                        ...methods.getValues(),
+                        firstName: googleFirstName as string,
+                        lastName: googleLastName as string,
+                    });
+
+                    // Check if user has birthday or phone in Google metadata
+                    const googleBirthday = user.user_metadata?.birthday;
+                    const googlePhone = user.user_metadata?.phone_number;
+
+                    if (googleBirthday) {
+                        setBirthdate(new Date(googleBirthday));
+                    }
+                    if (googlePhone) {
+                        methods.setValue('phoneNumber', googlePhone);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking Google user:', error);
+            }
+        };
+
+        checkGoogleUser();
+    }, [googleFirstName, googleLastName]);
 
     // Format date for display
     const formatDate = (date: Date | null) => {
@@ -59,6 +93,11 @@ export default function ProfileScreen() {
             return;
         }
 
+        if (isGoogleUser && !data.password) {
+            // Show password error for Google users
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -68,7 +107,8 @@ export default function ProfileScreen() {
                     first_name: data.firstName,
                     last_name: data.lastName,
                     birthdate: birthdate ? birthdate.toISOString() : null,
-                    password: data.password
+                    password: data.password,
+                    has_password: true
                 }
             });
 
@@ -103,6 +143,7 @@ export default function ProfileScreen() {
                             name="firstName"
                             label="First name"
                             rules={['required']}
+                            editable={!isGoogleUser}
                         />
                     </View>
 
@@ -110,6 +151,7 @@ export default function ProfileScreen() {
                         <Input
                             name="lastName"
                             label="Last name"
+                            editable={!isGoogleUser}
                         />
                     </View>
                 </View>
@@ -138,11 +180,12 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
 
+                {/* Password - Required for all users */}
                 <View className="mb-6">
                     <Input
                         name="password"
                         label="Password"
-                        rules={['password']}
+                        rules={['required', 'password']}
                         secureTextEntry
                     />
                 </View>
