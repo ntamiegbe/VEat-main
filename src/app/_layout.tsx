@@ -1,6 +1,6 @@
+import React, { useEffect, useState } from "react";
 import "../../global.css";
-import { Slot } from "expo-router";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Slot, SplashScreen, Stack } from "expo-router";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { FontProvider } from "@/providers/FontProvider";
@@ -16,25 +16,47 @@ import { FontProvider } from "@/providers/FontProvider";
  * and unauthenticated routes.
  */
 
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
+
 export default function Root() {
+  const [appIsReady, setAppIsReady] = useState(false);
+
+  useEffect(() => {
+    // Prepare the app and ensure all providers are ready
+    async function prepare() {
+      try {
+        // Artificial delay for demonstration
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Any other initialization can go here
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        // Tell the application to render
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
+
+  // When everything is ready, hide the splash screen and show the app
+  useEffect(() => {
+    if (appIsReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null; // Don't render anything until the app is ready
+  }
+
   return (
     <QueryProvider>
       <AuthProvider>
         <FontProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            {/* 
-            GestureHandlerRootView is required for:
-            - Drawer navigation gestures
-            - Swipe gestures
-            - Other gesture-based interactions
-            Must wrap the entire app to function properly
-          */}
-            {/* 
-            Slot renders child routes dynamically
-            This includes both (app) and (auth) group routes
-          */}
-            <Slot />
-          </GestureHandlerRootView>
+          <Slot />
         </FontProvider>
       </AuthProvider>
     </QueryProvider>

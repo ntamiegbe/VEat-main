@@ -1,36 +1,43 @@
-import { View, StyleSheet, TouchableOpacity, Image, SafeAreaView } from 'react-native'
-import React, { useEffect } from 'react'
+import { View, TouchableOpacity, Image, SafeAreaView, StyleSheet, ActivityIndicator } from 'react-native'
+import React, { useState } from 'react'
 import { MotiView } from 'moti'
-import { useRouter } from 'expo-router'
+import { router } from 'expo-router'
 import { useAuth } from '@/providers/AuthProvider'
 import Text from '@/components/ui/Text'
-import { typography } from '@/utils/typography'
 
 export default function IntroScreen() {
-    const router = useRouter()
-    const { session, isLoading } = useAuth()
+    const { isLoading: authLoading } = useAuth()
+    const [isNavigating, setIsNavigating] = useState(false)
 
-    // If user is already authenticated, redirect to home
-    useEffect(() => {
-        if (!isLoading && session) {
-            router.replace('/(app)')
-        }
-    }, [session, isLoading])
-
-    // Navigate to login screen
+    // Navigate to login screen with safety checks
     const handleLogin = () => {
-        router.push('/(auth)/login')
+        if (isNavigating) return; // Prevent multiple taps
+        setIsNavigating(true);
+
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+            router.push('/(auth)/login');
+            setIsNavigating(false);
+        }, 100);
     }
 
-    // Navigate to signup screen (currently using login as there's no separate signup)
+    // Navigate to signup screen with safety checks
     const handleSignUp = () => {
-        router.push('/(auth)/login')
+        if (isNavigating) return; // Prevent multiple taps
+        setIsNavigating(true);
+
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+            router.push('/(auth)/signup/email');
+            setIsNavigating(false);
+        }, 100);
     }
 
-    if (isLoading) {
+    if (authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <Text>Loading...</Text>
+                <ActivityIndicator size="large" color="#008751" />
+                <Text style={{ marginTop: 10 }}>Loading...</Text>
             </View>
         )
     }
@@ -48,22 +55,32 @@ export default function IntroScreen() {
                     style={styles.logo}
                 />
 
-                <Text style={styles.title} weight="bold">Welcome to VEat</Text>
+                <Text weight="bold" style={styles.title}>Welcome to VEat</Text>
                 <Text style={styles.subtitle}>Your favorite Nigerian food, delivered fast</Text>
 
                 <View style={styles.buttonContainer}>
                     <TouchableOpacity
-                        style={[styles.button, styles.loginButton]}
+                        style={styles.loginButton}
                         onPress={handleLogin}
+                        disabled={isNavigating}
                     >
-                        <Text style={styles.loginButtonText} weight="medium">Login</Text>
+                        {isNavigating ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                            <Text weight="medium" style={styles.loginButtonText}>Login</Text>
+                        )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.button, styles.signUpButton]}
+                        style={styles.signUpButton}
                         onPress={handleSignUp}
+                        disabled={isNavigating}
                     >
-                        <Text style={styles.signUpButtonText} weight="medium">Sign Up</Text>
+                        {isNavigating ? (
+                            <ActivityIndicator color="#008751" size="small" />
+                        ) : (
+                            <Text weight="medium" style={styles.signUpButtonText}>Sign Up</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </MotiView>
@@ -74,7 +91,7 @@ export default function IntroScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FCFCFC',
+        backgroundColor: '#FFFFFF',
     },
     loadingContainer: {
         flex: 1,
@@ -94,15 +111,16 @@ const styles = StyleSheet.create({
         borderRadius: 60,
     },
     title: {
-        ...typography.h1,
-        color: '#008751', // Nigerian green
+        fontSize: 30,
+        fontWeight: 'bold',
+        color: '#008751',
         marginBottom: 12,
         textAlign: 'center',
     },
     subtitle: {
-        ...typography.bodyLarge,
-        color: '#555',
-        marginBottom: 60,
+        fontSize: 18,
+        color: '#666666',
+        marginBottom: 64,
         textAlign: 'center',
         paddingHorizontal: 20,
     },
@@ -111,26 +129,29 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         gap: 16,
     },
-    button: {
+    loginButton: {
         paddingVertical: 16,
-        borderRadius: 10,
+        borderRadius: 12,
+        backgroundColor: '#008751',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    loginButton: {
-        backgroundColor: '#008751', // Nigerian green
+        marginBottom: 16,
     },
     loginButtonText: {
-        ...typography.buttonLarge,
         color: 'white',
+        fontSize: 18,
     },
     signUpButton: {
+        paddingVertical: 16,
+        borderRadius: 12,
         backgroundColor: 'white',
         borderWidth: 1,
         borderColor: '#008751',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     signUpButtonText: {
-        ...typography.buttonLarge,
         color: '#008751',
+        fontSize: 18,
     },
-}) 
+}); 

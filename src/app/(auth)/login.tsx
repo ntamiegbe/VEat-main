@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { MotiView } from 'moti'
 import { supabase } from '@/lib/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 
 type FormData = {
   phone: string;
@@ -14,7 +14,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [otpValue, setOtpValue] = useState('')
-  const router = useRouter()
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
     defaultValues: {

@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
-import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { router } from 'expo-router';
 
 type AuthContextType = {
     session: Session | null;
@@ -9,7 +9,7 @@ type AuthContextType = {
     signOut: () => Promise<void>;
 };
 
-// Create the auth context
+// Create the auth context with default values
 const AuthContext = createContext<AuthContextType>({
     session: null,
     isLoading: true,
@@ -19,40 +19,37 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const router = useRouter();
-    const segments = useSegments();
-    const navigationState = useRootNavigationState();
-
-    // Handle routing based on auth state
-    useEffect(() => {
-        if (!navigationState?.key || isLoading) return;
-
-        const inAuthGroup = segments[0] === '(auth)';
-        const inAppGroup = segments[0] === '(app)';
-
-        if (session && inAuthGroup) {
-            // Redirect to home if user is logged in and on auth screen
-            router.replace('/(app)');
-        } else if (!session && inAppGroup) {
-            // Redirect to login if user is not logged in and trying to access app
-            router.replace('/(auth)/login');
-        }
-    }, [session, segments, navigationState?.key, isLoading]);
 
     // Set up Supabase auth state listener
     useEffect(() => {
         // Initial session check
-        supabase?.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setIsLoading(false);
-        });
+        const initializeAuth = async () => {
+            try {
+                setIsLoading(true);
+                // Make sure supabase is available before trying to use it
+                if (supabase) {
+                    const { data } = await supabase.auth.getSession();
+                    setSession(data.session);
+                }
+            } catch (error) {
+                console.error('Error checking auth session:', error);
+            } finally {
+                // Set loading to false even if there's an error
+                setIsLoading(false);
+            }
+        };
 
-        // Listen for auth state changes
-        const { data } = supabase?.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            setIsLoading(false);
-        }) || { data: { subscription: { unsubscribe: () => { } } } };
-        const { subscription } = data;
+        initializeAuth();
+
+        // Set up auth state change listener only if supabase is available
+        let subscription = { unsubscribe: () => { } };
+
+        if (supabase) {
+            const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+                setSession(session);
+            });
+            subscription = data.subscription;
+        }
 
         // Cleanup function
         return () => {
@@ -60,13 +57,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
     }, []);
 
-
     // Sign out function
     const signOut = async () => {
         try {
             setIsLoading(true);
-            await supabase?.auth.signOut();
-            router.replace('/(auth)/login');
+            if (supabase) {
+                await supabase.auth.signOut();
+                // Redirect to intro screen after successful sign out
+                router.replace('/(auth)/intro');
+            }
         } catch (error) {
             console.error('Error signing out:', error);
         } finally {

@@ -18,7 +18,7 @@ export default function HomeScreen() {
           Welcome to VEat
         </Text>
         <Text style={styles.phoneText}>
-          Logged in as: {session?.user?.phone || 'User'}
+          Logged in as: {session?.user?.email || 'User'}
         </Text>
 
         <View style={styles.cardContainer}>
