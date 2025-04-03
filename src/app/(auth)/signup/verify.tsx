@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Alert } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Snackbar } from 'react-native-paper';
 import Text from '@/components/ui/Text';
 import OTPInput from '@/components/ui/OTPInput';
-import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator } from 'react-native-paper';
 import { AuthLayout } from '@/components/layouts/auth-layout';
+import Toast from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
+import { Ionicons } from '@expo/vector-icons';
 
 // OTP input length
 const OTP_LENGTH = 4;
@@ -15,6 +16,7 @@ const DEMO_OTP = '1234';
 
 export default function VerifyScreen() {
     const { email } = useLocalSearchParams<{ email: string }>();
+    const toast = useToast();
 
     // OTP state
     const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -23,16 +25,12 @@ export default function VerifyScreen() {
     const [verificationSuccess, setVerificationSuccess] = useState(false);
     const [verificationError, setVerificationError] = useState(false);
     const [resendCountdown, setResendCountdown] = useState(60);
-    const [toast, setToast] = useState({ visible: false, message: '' });
 
     // Initialize countdown timer when component mounts
     useEffect(() => {
         startResendTimer();
         // Show initial toast for code sent
-        setToast({
-            visible: true,
-            message: 'Verification code sent to your email'
-        });
+        toast.showToast('Verification code sent to your email');
     }, []);
 
     // Function to start the resend countdown timer
@@ -73,6 +71,7 @@ export default function VerifyScreen() {
                 if (otpString === DEMO_OTP) {
                     setVerificationSuccess(true);
                     setVerificationError(false);
+                    toast.showToast('Verification successful', <Ionicons name="checkmark-circle" size={20} color="white" />);
                     // Navigate to profile completion after a brief delay
                     setTimeout(() => {
                         router.push({
@@ -83,10 +82,7 @@ export default function VerifyScreen() {
                 } else {
                     setVerificationSuccess(false);
                     setVerificationError(true);
-                    setToast({
-                        visible: true,
-                        message: 'Invalid verification code. Please try again.'
-                    });
+                    toast.showToast('Invalid verification code. Please try again.');
                 }
                 setIsLoading(false);
             }, 1500);
@@ -109,10 +105,7 @@ export default function VerifyScreen() {
             startResendTimer();
 
             // Show toast notification
-            setToast({
-                visible: true,
-                message: 'New verification code sent to your email'
-            });
+            toast.showToast('New verification code sent to your email');
 
             setIsResending(false);
         }
@@ -172,25 +165,13 @@ export default function VerifyScreen() {
                 {renderResendButton()}
             </TouchableOpacity>
 
-            {/* Toast Notification */}
-            <Snackbar
-                visible={toast.visible}
-                onDismiss={() => setToast({ ...toast, visible: false })}
-                duration={3000}
-                style={{
-                    backgroundColor: '#1F2937',
-                    position: 'absolute',
-                    bottom: 100,
-                    left: 16,
-                    right: 16,
-                    borderRadius: 8
-                }}
-                wrapperStyle={{ position: 'absolute', bottom: 0 }}
-            >
-                <Text className="text-white text-sm" weight="medium">
-                    {toast.message}
-                </Text>
-            </Snackbar>
+            {/* Toast Component */}
+            <Toast
+                message={toast.message}
+                isVisible={toast.isVisible}
+                onClose={toast.hideToast}
+                icon={toast.icon}
+            />
         </AuthLayout>
     );
 } 
