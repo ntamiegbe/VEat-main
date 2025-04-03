@@ -15,7 +15,9 @@ const OTP_LENGTH = 4;
 const DEMO_OTP = '1234';
 
 export default function VerifyScreen() {
+    // Get email from params
     const { email } = useLocalSearchParams<{ email: string }>();
+
     const toast = useToast();
 
     // OTP state

@@ -8,15 +8,19 @@ import Input from '@/components/global/input';
 import GoogleIcon from '@assets/icons/GoogleIcon.svg';
 import { supabase } from '@/lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { AuthLayout } from '@/components/layouts/auth-layout';
+import { sendOTPEmail } from '@/lib/email';
+import { useToast } from '@/hooks/useToast';
+import Toast from '@/components/ui/Toast';
 
 // Register for the authentication callback
 WebBrowser.maybeCompleteAuthSession();
 
 export default function EmailSignUpScreen() {
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const toast = useToast(4000); // 4 seconds duration
 
     const methods = useForm({
         defaultValues: {
@@ -30,11 +34,58 @@ export default function EmailSignUpScreen() {
     const isFormValid = formState.isValid;
 
     // Continue with email
-    const handleContinue = handleSubmit((data) => {
-        router.push({
-            pathname: '/(auth)/signup/verify',
-            params: { email: data.email }
-        });
+    const handleContinue = handleSubmit(async (data) => {
+        try {
+            setIsLoading(true);
+
+            // Validate email format
+            if (!/^\S+@\S+\.\S+$/.test(data.email)) {
+                toast.showToast('Please enter a valid email address');
+                return;
+            }
+
+            // Generate OTP - Ensure exactly 4 digits (1000-9999)
+            const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+            try {
+                // Store OTP in Supabase for verification
+                const { error: otpError } = await supabase
+                    .from('email_verification')
+                    .insert({
+                        email: data.email,
+                        otp,
+                        created_at: new Date().toISOString(),
+                        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes expiry
+                    });
+
+                if (otpError) {
+                    console.error('OTP storage error:', otpError);
+                    toast.showToast(otpError.message || 'Failed to store verification code');
+                    throw otpError;
+                }
+
+                // Send OTP via Zeptomail
+                await sendOTPEmail(data.email);
+
+                toast.showToast('Verification code sent to your email');
+
+                // Navigate to verification screen
+                router.push({
+                    pathname: '/(auth)/signup/verify',
+                    params: {
+                        email: data.email
+                    }
+                });
+            } catch (emailError: any) {
+                toast.showToast('Could not send verification code. Please try again later.');
+                throw emailError;
+            }
+        } catch (error: any) {
+            console.error('Email signup error:', error);
+            toast.showToast(error.message || 'Something went wrong');
+        } finally {
+            setIsLoading(false);
+        }
     });
 
     // Handle Google Sign Up
@@ -61,8 +112,15 @@ export default function EmailSignUpScreen() {
                 }
             });
 
-            if (error) throw error;
-            if (!data?.url) throw new Error('No authentication URL returned from Supabase');
+            if (error) {
+                toast.showToast(error.message || 'Failed to initialize Google sign in');
+                throw error;
+            }
+
+            if (!data?.url) {
+                toast.showToast('No authentication URL returned from Supabase');
+                throw new Error('No authentication URL returned from Supabase');
+            }
 
             // Open auth session in browser - this is where the redirect happens
             const result = await WebBrowser.openAuthSessionAsync(
@@ -91,23 +149,20 @@ export default function EmailSignUpScreen() {
                         refresh_token: refreshToken
                     });
 
-                    if (error) throw error;
+                    if (error) {
+                        toast.showToast(error.message || 'Failed to set session');
+                        throw error;
+                    }
 
                     // Get user details
-                    const { data: userData } = await supabase.auth.getUser();
+                    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+                    if (userError) {
+                        toast.showToast(userError.message || 'Failed to fetch user data');
+                        throw userError;
+                    }
 
                     if (userData?.user) {
-                        // Log the complete user data
-                        console.log('Google Sign In Response:', {
-                            user: userData.user,
-                            metadata: userData.user.user_metadata,
-                            appMetadata: userData.user.app_metadata,
-                            email: userData.user.email,
-                            fullName: userData.user.user_metadata?.full_name,
-                            phone: userData.user.user_metadata?.phone_number,
-                            birthday: userData.user.user_metadata?.birthday
-                        });
-
                         // Extract user metadata
                         const email = userData.user.email;
                         const fullName = userData.user.user_metadata?.full_name || '';
@@ -117,6 +172,8 @@ export default function EmailSignUpScreen() {
                         const nameParts = fullName.split(' ');
                         const firstName = nameParts[0] || '';
                         const lastName = nameParts.slice(1).join(' ') || '';
+
+                        toast.showToast('Successfully signed in with Google');
 
                         // Redirect to profile completion with separated names
                         router.replace({
@@ -130,13 +187,14 @@ export default function EmailSignUpScreen() {
                         });
                     }
                 } else {
-                    Alert.alert('Login Failed', 'Could not authenticate with Google. Please try again.');
+                    toast.showToast('Could not authenticate with Google. Please try again.');
                 }
             } else {
-                Alert.alert('Signup cancelled or failed');
+                toast.showToast('Google sign-up was cancelled');
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to sign up with Google');
+            console.error('Google signup error:', error);
+            toast.showToast(error.message || 'Failed to sign up with Google');
         } finally {
             setIsGoogleLoading(false);
         }
@@ -144,7 +202,7 @@ export default function EmailSignUpScreen() {
 
     return (
         <AuthLayout>
-            <Text className="text-tc-primary text-[22px] font-medium mb-8">What's your email address?</Text>
+            <Text className="text-tc-primary text-[22px] font-medium mb-8">Create your account</Text>
 
             <FormProvider {...methods}>
                 <View className="mb-8 z-10">
@@ -162,7 +220,7 @@ export default function EmailSignUpScreen() {
             <Button
                 onPress={handleContinue}
                 disabled={!isFormValid}
-                isLoading={formState.isSubmitting}
+                isLoading={isLoading}
             >
                 Continue
             </Button>
@@ -190,6 +248,13 @@ export default function EmailSignUpScreen() {
                     <Text weight="medium" className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-5">Privacy Policy</Text>
                 </Text>
             </View>
+
+            {/* Toast component */}
+            <Toast
+                message={toast.message}
+                isVisible={toast.isVisible}
+                onClose={toast.hideToast}
+            />
         </AuthLayout>
     );
 } 
