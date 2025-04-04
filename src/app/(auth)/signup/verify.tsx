@@ -73,7 +73,7 @@ export default function VerifyScreen() {
                 if (otpString === DEMO_OTP) {
                     setVerificationSuccess(true);
                     setVerificationError(false);
-                    toast.showToast('Verification successful', <Ionicons name="checkmark-circle" size={20} color="white" />);
+                    toast.showSuccess('Verification successful');
                     // Navigate to profile completion after a brief delay
                     setTimeout(() => {
                         router.push({
@@ -84,7 +84,7 @@ export default function VerifyScreen() {
                 } else {
                     setVerificationSuccess(false);
                     setVerificationError(true);
-                    toast.showToast('Invalid verification code. Please try again.');
+                    toast.showError('Invalid verification code. Please try again.');
                 }
                 setIsLoading(false);
             }, 1500);
@@ -107,7 +107,7 @@ export default function VerifyScreen() {
             startResendTimer();
 
             // Show toast notification
-            toast.showToast('New verification code sent to your email');
+            toast.showSuccess('New verification code sent to your email');
 
             setIsResending(false);
         }
@@ -173,6 +173,7 @@ export default function VerifyScreen() {
                 isVisible={toast.isVisible}
                 onClose={toast.hideToast}
                 icon={toast.icon}
+                type={toast.type}
             />
         </AuthLayout>
     );

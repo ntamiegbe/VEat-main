@@ -1,10 +1,13 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { MotiView } from 'moti'
 import { supabase } from '@/lib/supabase';
+// import { testSupabase as supabase } from '@/lib/test-supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useToast } from '@/hooks/useToast';
+import Toast from '@/components/ui/Toast';
 
 type FormData = {
   phone: string;
@@ -14,6 +17,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [otpValue, setOtpValue] = useState('')
+  const toast = useToast(5000); // 5 seconds duration
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -65,12 +69,9 @@ const Login = () => {
 
       // If successful
       setOtpSent(true)
-      Alert.alert(
-        "OTP Sent",
-        `We've sent a verification code to ${formattedPhone}. Please enter it below.`
-      )
+      toast.showSuccess(`We've sent a verification code to ${formattedPhone}. Please enter it below.`);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to send verification code")
+      toast.showError(error.message || "Failed to send verification code");
       console.error(error)
     } finally {
       setLoading(false)
@@ -95,19 +96,15 @@ const Login = () => {
 
       // If successful, user is now logged in
       console.log('User logged in:', data)
-      Alert.alert(
-        "Success",
-        "You've successfully logged in!",
-        [
-          {
-            text: "Continue",
-            onPress: () => router.replace('/(app)')
-          }
-        ]
-      )
+      toast.showSuccess("You've successfully logged in!");
+
+      // Navigate after a brief delay to allow toast to be seen
+      setTimeout(() => {
+        router.replace('/(app)');
+      }, 1000);
 
     } catch (error: any) {
-      Alert.alert("Verification Failed", error.message || "Invalid verification code")
+      toast.showError(error.message || "Invalid verification code");
       console.error(error)
     } finally {
       setLoading(false)
@@ -289,6 +286,14 @@ const Login = () => {
           </MotiView>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Toast component */}
+      <Toast
+        message={toast.message}
+        isVisible={toast.isVisible}
+        onClose={toast.hideToast}
+        type={toast.type}
+      />
     </SafeAreaView>
   )
 }

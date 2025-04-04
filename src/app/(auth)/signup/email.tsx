@@ -40,7 +40,7 @@ export default function EmailSignUpScreen() {
 
             // Validate email format
             if (!/^\S+@\S+\.\S+$/.test(data.email)) {
-                toast.showToast('Please enter a valid email address');
+                toast.showError('Please enter a valid email address');
                 return;
             }
 
@@ -60,14 +60,14 @@ export default function EmailSignUpScreen() {
 
                 if (otpError) {
                     console.error('OTP storage error:', otpError);
-                    toast.showToast(otpError.message || 'Failed to store verification code');
+                    toast.showError(otpError.message || 'Failed to store verification code');
                     throw otpError;
                 }
 
                 // Send OTP via Zeptomail
                 await sendOTPEmail(data.email);
 
-                toast.showToast('Verification code sent to your email');
+                toast.showSuccess('Verification code sent to your email');
 
                 // Navigate to verification screen
                 router.push({
@@ -77,12 +77,13 @@ export default function EmailSignUpScreen() {
                     }
                 });
             } catch (emailError: any) {
-                toast.showToast('Could not send verification code. Please try again later.');
+                console.error('Email signup error:', emailError);
+                toast.showError('Could not send verification code. Please try again later.');
                 throw emailError;
             }
         } catch (error: any) {
             console.error('Email signup error:', error);
-            toast.showToast(error.message || 'Something went wrong');
+            toast.showError(error.message || 'Something went wrong');
         } finally {
             setIsLoading(false);
         }
@@ -113,12 +114,12 @@ export default function EmailSignUpScreen() {
             });
 
             if (error) {
-                toast.showToast(error.message || 'Failed to initialize Google sign in');
+                toast.showError(error.message || 'Failed to initialize Google sign in');
                 throw error;
             }
 
             if (!data?.url) {
-                toast.showToast('No authentication URL returned from Supabase');
+                toast.showError('No authentication URL returned from Supabase');
                 throw new Error('No authentication URL returned from Supabase');
             }
 
@@ -150,7 +151,7 @@ export default function EmailSignUpScreen() {
                     });
 
                     if (error) {
-                        toast.showToast(error.message || 'Failed to set session');
+                        toast.showError(error.message || 'Failed to set session');
                         throw error;
                     }
 
@@ -158,7 +159,7 @@ export default function EmailSignUpScreen() {
                     const { data: userData, error: userError } = await supabase.auth.getUser();
 
                     if (userError) {
-                        toast.showToast(userError.message || 'Failed to fetch user data');
+                        toast.showError(userError.message || 'Failed to fetch user data');
                         throw userError;
                     }
 
@@ -173,7 +174,7 @@ export default function EmailSignUpScreen() {
                         const firstName = nameParts[0] || '';
                         const lastName = nameParts.slice(1).join(' ') || '';
 
-                        toast.showToast('Successfully signed in with Google');
+                        toast.showSuccess('Successfully signed in with Google');
 
                         // Redirect to profile completion with separated names
                         router.replace({
@@ -187,14 +188,14 @@ export default function EmailSignUpScreen() {
                         });
                     }
                 } else {
-                    toast.showToast('Could not authenticate with Google. Please try again.');
+                    toast.showWarning('Could not authenticate with Google. Please try again.');
                 }
             } else {
-                toast.showToast('Google sign-up was cancelled');
+                toast.showWarning('Google sign-up was cancelled');
             }
         } catch (error: any) {
             console.error('Google signup error:', error);
-            toast.showToast(error.message || 'Failed to sign up with Google');
+            toast.showError(error.message || 'Failed to sign up with Google');
         } finally {
             setIsGoogleLoading(false);
         }
@@ -254,6 +255,7 @@ export default function EmailSignUpScreen() {
                 message={toast.message}
                 isVisible={toast.isVisible}
                 onClose={toast.hideToast}
+                type={toast.type}
             />
         </AuthLayout>
     );

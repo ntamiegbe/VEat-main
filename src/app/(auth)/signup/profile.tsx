@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ScrollView, Alert } from 'react-native';
+import { ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useForm, FormProvider } from 'react-hook-form';
 import { AuthLayout } from '@/components/layouts/auth-layout';
 import { supabase } from '@/lib/supabase';
 import { ProfileForm } from '@/components/auth/ProfileForm';
+import { useToast } from '@/hooks/useToast';
+import Toast from '@/components/ui/Toast';
 
 type FormData = {
     firstName: string;
@@ -21,6 +23,7 @@ export default function ProfileScreen() {
     const [isGoogleUser, setIsGoogleUser] = useState(false);
     const googleCheckCompleted = useRef(false);
     const [birthdateError, setBirthdateError] = useState<string | null>(null);
+    const toast = useToast(5000); // 5 seconds duration for toast messages
 
     // Form state with React Hook Form
     const methods = useForm<FormData>({
@@ -260,13 +263,12 @@ export default function ProfileScreen() {
             }
 
             if (success) {
+                // Show success toast
+                toast.showSuccess('Profile created successfully');
                 // Navigate to locations after successful profile creation
                 router.replace('/(auth)/signup/locations');
             } else {
-                Alert.alert(
-                    'Profile Not Saved',
-                    'Your profile details were not saved. Please try again or contact support.'
-                );
+                toast.showError('Your profile details were not saved. Please try again or contact support.');
             }
         } catch (error: any) {
             console.error('Profile update failed:', error);
@@ -283,14 +285,11 @@ export default function ProfileScreen() {
                 errorMessage = 'Internal error with user identification. Please try again.';
             }
 
-            Alert.alert(
-                'Profile Update Failed',
-                errorMessage + ' Please try again or contact support.'
-            );
+            toast.showError(errorMessage + ' Please try again or contact support.');
         } finally {
             setIsLoading(false);
         }
-    }, [birthdate, isGoogleUser, methods, setBirthdateError, router]);
+    }, [birthdate, isGoogleUser, methods, setBirthdateError, router, toast]);
 
     return (
         <AuthLayout
@@ -315,6 +314,14 @@ export default function ProfileScreen() {
                     />
                 </FormProvider>
             </ScrollView>
+
+            {/* Toast component */}
+            <Toast
+                message={toast.message}
+                isVisible={toast.isVisible}
+                onClose={toast.hideToast}
+                type={toast.type}
+            />
         </AuthLayout>
     );
 } 
