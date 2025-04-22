@@ -125,8 +125,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                             const isSelected = value && day.dateString === value.toISOString().split('T')[0];
                             return (
                                 <View
-                                    className={`w-[52px] h-[44px] items-center justify-center rounded-lg ${isSelected ? 'bg-[#E6F5F0]' : 'bg-transparent'
-                                        }`}
+                                    className={`w-[52px] h-[52px] items-center justify-center rounded-lg bg-white`}
                                 >
                                     <Text
                                         className={`text-base ${isSelected ? 'text-[#34AA87]' : 'text-[#111827]'

@@ -40,26 +40,27 @@ export default function AppLayout() {
         name="index"
         options={{
           title: 'Home',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="resturants"
+        name="search"
         options={{
-          title: 'Resturants',
+          title: 'Search',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pizza-outline" size={size} color={color} />
+            <Ionicons name="search-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="favourites"
+        name="orders"
         options={{
-          title: 'Favourites',
+          title: 'Orders',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart-outline" size={size} color={color} />
+            <Ionicons name="bag-handle-outline" size={size} color={color} />
           ),
         }}
       />

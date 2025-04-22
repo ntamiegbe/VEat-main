@@ -3,7 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import Text from './Text';
 import { Ionicons } from '@expo/vector-icons';
 
-export type ToastType = 'success' | 'warning' | 'error';
+type ToastType = 'success' | 'error' | 'info';
 
 interface ToastProps {
     message: string;
@@ -13,50 +13,40 @@ interface ToastProps {
     type?: ToastType;
 }
 
-export default function Toast({
-    message,
-    isVisible,
-    onClose,
-    icon,
-    type = 'success'
-}: ToastProps) {
+export default function Toast({ message, isVisible, onClose, icon, type = 'info' }: ToastProps) {
     if (!isVisible) return null;
 
-    // Define styles based on toast type
-    const getBackgroundColor = () => {
+    // Choose background color based on type
+    const getBgColor = () => {
         switch (type) {
             case 'success':
-                return 'bg-accent-success';
-            case 'warning':
-                return 'bg-amber-500';
+                return 'bg-primary-main';
             case 'error':
                 return 'bg-red-500';
             default:
-                return 'bg-accent-success';
+                return 'bg-gray-800';
         }
     };
 
-    // Default icons if none provided
-    const getDefaultIcon = () => {
+    // Default icons by type if none provided
+    const getIcon = () => {
         if (icon) return icon;
 
         switch (type) {
             case 'success':
-                return <Ionicons name="checkmark-circle" size={20} color="white" />;
-            case 'warning':
-                return <Ionicons name="alert-circle" size={20} color="white" />;
+                return <Ionicons name="checkmark-circle" size={24} color="white" />;
             case 'error':
-                return <Ionicons name="close-circle" size={20} color="white" />;
+                return <Ionicons name="alert-circle" size={24} color="white" />;
             default:
-                return <Ionicons name="checkmark-circle" size={20} color="white" />;
+                return <Ionicons name="information-circle" size={24} color="white" />;
         }
     };
 
     return (
-        <View className={`absolute top-12 left-4 right-4 ${getBackgroundColor()} rounded-lg px-4 py-6 z-50 flex-row items-center justify-between`}>
+        <View className={`absolute top-10 left-4 right-4 ${getBgColor()} rounded-lg px-4 py-6 z-50 flex-row items-center justify-between`}>
             <View className="flex-row items-center flex-1">
                 <View className="mr-2">
-                    {getDefaultIcon()}
+                    {getIcon()}
                 </View>
                 <Text className="text-white flex-1 text-base" weight="medium">
                     {message}

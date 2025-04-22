@@ -102,36 +102,6 @@ export default function ProfileScreen() {
         // Don't close picker immediately, let user press "Done"
     }, []);
 
-    // Direct database insert function - With RLS disabled
-    const insertUserProfile = async (userId: string, profileData: any) => {
-        try {
-            const { data, error } = await supabase
-                .from('users')
-                .insert({
-                    id: userId,
-                    full_name: profileData.fullName,
-                    email: profileData.email,
-                    phone_number: profileData.phoneNumber,
-                    birthday: profileData.birthday,
-                    user_type: 'user',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .select('id')
-                .single();
-
-            if (error) {
-                console.error("Insert error:", error);
-                throw error;
-            }
-
-            return !!data;
-        } catch (error) {
-            console.error("Profile error:", error);
-            throw error;
-        }
-    };
-
     // Handle Google user profile update
     const handleGoogleUserUpdate = async (data: FormData) => {
         try {
@@ -151,7 +121,7 @@ export default function ProfileScreen() {
                     birthdate: birthdate?.toISOString(),
                     has_password: true,
                     full_name: `${data.firstName} ${data.lastName}`,
-                    user_type: 'customer'
+                    user_type: 'user'
                 }
             });
 
@@ -162,18 +132,31 @@ export default function ProfileScreen() {
             if (userError) throw userError;
             if (!user) throw new Error('No user found');
 
-            // Try to insert/update directly for development
-            const success = await insertUserProfile(user.id, {
-                fullName: `${data.firstName} ${data.lastName}`,
-                email: data.email,
-                phoneNumber: data.phoneNumber,
-                birthday: birthdate?.toISOString() || new Date().toISOString(),
-                userType: 'customer'
-            });
+            // Check if phone number is already in use
+            const { data: existingPhoneUser, error: phoneCheckError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('phone_number', data.phoneNumber)
+                .neq('id', user.id)
+                .maybeSingle();
 
-            if (!success) {
-                throw new Error('Failed to create or update user profile');
-            }
+            if (phoneCheckError) throw phoneCheckError;
+            if (existingPhoneUser) throw new Error('PHONE_NUMBER_EXISTS');
+
+            // Create or update user profile
+            const { error: profileError } = await supabase
+                .from('users')
+                .upsert({
+                    id: user.id,
+                    email: user.email,
+                    full_name: `${data.firstName} ${data.lastName}`,
+                    phone_number: data.phoneNumber,
+                    birthday: birthdate?.toISOString() || new Date().toISOString(),
+                    user_type: 'user',
+                    updated_at: new Date().toISOString()
+                });
+
+            if (profileError) throw profileError;
 
             return true;
         } catch (error) {
@@ -184,8 +167,17 @@ export default function ProfileScreen() {
     // Handle email user profile creation
     const handleEmailUserProfile = async (data: FormData) => {
         try {
-            // Create a proper UUID for the temporary user
-            // We'll need to link this to the auth user later
+            // Check if phone number is already in use
+            const { data: existingPhoneUser, error: phoneCheckError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('phone_number', data.phoneNumber)
+                .maybeSingle();
+
+            if (phoneCheckError) throw phoneCheckError;
+            if (existingPhoneUser) throw new Error('PHONE_NUMBER_EXISTS');
+
+            // Create the user in auth
             const { data: authData, error: signUpError } = await supabase.auth.signUp({
                 email: data.email,
                 password: data.password,
@@ -197,33 +189,29 @@ export default function ProfileScreen() {
                         birthdate: birthdate?.toISOString(),
                         has_password: true,
                         full_name: `${data.firstName} ${data.lastName}`,
-                        user_type: 'customer'
+                        user_type: 'user'
                     }
                 }
             });
 
             if (signUpError) throw signUpError;
+            if (!authData.user) throw new Error('User account could not be created');
 
-            if (!authData.user) {
-                throw new Error('User account could not be created');
-            }
+            // Create the user profile
+            const { error: profileError } = await supabase
+                .from('users')
+                .insert({
+                    id: authData.user.id,
+                    email: data.email,
+                    full_name: `${data.firstName} ${data.lastName}`,
+                    phone_number: data.phoneNumber,
+                    birthday: birthdate?.toISOString() || new Date().toISOString(),
+                    user_type: 'user',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
 
-            // Use the actual UUID from the auth user
-            console.log("Email user created:", authData.user.id);
-
-            // Insert into users table directly (possible with RLS disabled)
-            const success = await insertUserProfile(authData.user.id, {
-                fullName: `${data.firstName} ${data.lastName}`,
-                email: data.email,
-                phoneNumber: data.phoneNumber,
-                birthday: birthdate?.toISOString() || new Date().toISOString()
-            });
-
-            if (!success) {
-                throw new Error('Failed to create user profile');
-            }
-
-            console.log("User profile created successfully");
+            if (profileError) throw profileError;
 
             return true;
         } catch (error) {
@@ -266,26 +254,45 @@ export default function ProfileScreen() {
                 // Show success toast
                 toast.showSuccess('Profile created successfully');
                 // Navigate to locations after successful profile creation
-                router.replace('/(auth)/signup/locations');
+                router.replace('/location');
             } else {
                 toast.showError('Your profile details were not saved. Please try again or contact support.');
             }
         } catch (error: any) {
             console.error('Profile update failed:', error);
 
-            // Extract the most useful error message
-            let errorMessage = error.message || 'There was an error saving your profile.';
+            let errorMessage = 'There was an error saving your profile.';
 
-            // Check for specific database constraint errors
-            if (errorMessage.includes('check constraint')) {
+            // Handle specific error cases
+            if (error.message === 'PHONE_NUMBER_EXISTS') {
+                errorMessage = 'This phone number is already registered with another account.';
+            } else if (error.code === '23505') {
+                if (error.details?.includes('phone_number')) {
+                    errorMessage = 'This phone number is already registered with another account.';
+                } else if (error.details?.includes('email')) {
+                    errorMessage = 'This email is already registered with another account.';
+                }
+            } else if (error.code === 'PGRST116') {
+                errorMessage = 'Unable to find your user record. Please try logging in again.';
+            } else if (error.code === '23514') {
                 errorMessage = 'One or more fields have invalid values. Please check your information.';
-            } else if (errorMessage.includes('violates unique constraint')) {
-                errorMessage = 'An account with this information already exists.';
-            } else if (errorMessage.includes('invalid input syntax for type uuid')) {
-                errorMessage = 'Internal error with user identification. Please try again.';
+            } else if (error.message?.includes('User already registered')) {
+                errorMessage = 'This email is already registered. Please try logging in instead.';
+            } else if (error.message?.includes('No user found')) {
+                errorMessage = 'Your session has expired. Please log in again.';
+            } else if (error.message?.includes('network')) {
+                errorMessage = 'Network error. Please check your internet connection and try again.';
             }
 
-            toast.showError(errorMessage + ' Please try again or contact support.');
+            // Show error toast with the specific message
+            toast.showError(errorMessage + ' Please try again or contact support if the problem persists.');
+
+            // If it's a session error, redirect to login
+            if (error.message?.includes('No user found') || error.code === 'PGRST116') {
+                setTimeout(() => {
+                    router.replace('/(auth)/login');
+                }, 2000);
+            }
         } finally {
             setIsLoading(false);
         }

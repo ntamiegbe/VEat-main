@@ -16,6 +16,7 @@ interface ProfileFormProps {
     onCloseDatePicker: () => void;
     formatDate: (date: Date | null) => string;
     birthdateError: string | null;
+    fromLogin?: boolean;
 }
 
 export const ProfileForm: React.FC<ProfileFormProps> = ({
@@ -27,7 +28,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
     onOpenDatePicker,
     onCloseDatePicker,
     formatDate,
-    birthdateError
+    birthdateError,
+    fromLogin = false
 }) => {
     return (
         <>
@@ -67,7 +69,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
             {/* Date of Birth */}
             <View className="mb-6">
                 <TouchableOpacity
-                    className="h-14 border border-gray-200 rounded-lg px-4 flex-row items-center justify-between bg-white"
+                    className="h-16 border border-gray-200 rounded-lg px-4 flex-row items-center justify-between bg-white"
                     onPress={onOpenDatePicker}
                     activeOpacity={0.7}
                 >
@@ -81,15 +83,17 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
                 )}
             </View>
 
-            {/* Password - Required for all users */}
-            <View className="mb-6">
-                <Input
-                    name="password"
-                    label={isGoogleUser ? "Password (Required for Google users)" : "Password"}
-                    rules={['required', 'password']}
-                    secureTextEntry
-                />
-            </View>
+            {/* Password - Only show if not coming from login */}
+            {!fromLogin && (
+                <View className="mb-6">
+                    <Input
+                        name="password"
+                        label={"Password"}
+                        rules={['required', 'password']}
+                        secureTextEntry
+                    />
+                </View>
+            )}
 
             {/* Date Picker */}
             <DatePicker
