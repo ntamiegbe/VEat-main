@@ -76,7 +76,6 @@ export const sendOTPEmail = async (email: string) => {
         if (DEV_MODE) {
             // Store OTP in memory for development
             devOTPs.set(email, { otp, expiresAt });
-            console.log(`[DEV] OTP for ${email}: ${otp}`);
             return true;
         }
 

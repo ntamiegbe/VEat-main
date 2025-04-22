@@ -1,291 +1,363 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
-import React, { useState, useEffect } from 'react'
-import { Controller, useForm } from 'react-hook-form'
-import { MotiView } from 'moti'
-import { supabase } from '@/lib/supabase';
-// import { testSupabase as supabase } from '@/lib/test-supabase';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { View, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/ui/Toast';
+import Text from '@/components/ui/Text';
+import Button from '@/components/global/button';
+import Input from '@/components/global/input';
+import { supabase } from '@/lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
+import GoogleIcon from '@assets/icons/GoogleIcon.svg';
+import Constants from 'expo-constants';
+import { AuthLayout } from '@/components/layouts/auth-layout';
 
-type FormData = {
-  phone: string;
-};
+// Register for OAuth callbacks
+WebBrowser.maybeCompleteAuthSession();
 
 const Login = () => {
-  const [loading, setLoading] = useState(false)
-  const [otpSent, setOtpSent] = useState(false)
-  const [otpValue, setOtpValue] = useState('')
-  const toast = useToast(5000); // 5 seconds duration
-
-  const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const toast = useToast(5000);
+  const methods = useForm({
     defaultValues: {
-      phone: ''
-    }
-  })
+      email: '',
+      password: ''
+    },
+    mode: 'onChange',
+  });
+
+  const { handleSubmit, formState } = methods;
+  const isFormValid = formState.isValid;
 
   // Check if user is already logged in on component mount
   useEffect(() => {
-    checkUser()
-  }, [])
+    checkUser();
+  }, []);
 
   const checkUser = async () => {
     try {
       if (!supabase) {
         throw new Error("Supabase client is not initialized");
       }
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
         // User is already logged in, redirect to home
-        router.replace('/(app)')
+        router.replace('/(app)');
       }
     } catch (error) {
-      console.error('Error checking auth state:', error)
+      console.error('Error checking auth state:', error);
     }
-  }
+  };
 
-  const handleSendOTP = async (data: FormData) => {
+  // Handle email/password login
+  const handleLogin = handleSubmit(async (data) => {
     try {
-      setLoading(true)
+      setIsLoading(true);
 
-      // Format phone number to ensure it includes Nigeria country code
-      const formattedPhone = formatPhoneNumber(data.phone)
-
-      // Request OTP from Supabase
       if (!supabase) {
         throw new Error("Supabase client is not initialized");
       }
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-        // options: {
-        //   // Set session duration to 24 hours (in seconds)
-        //   expiresIn: 60 * 60 * 24
-        // }
-      })
 
-      if (error) throw error
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password
+      });
 
-      // If successful
-      setOtpSent(true)
-      toast.showSuccess(`We've sent a verification code to ${formattedPhone}. Please enter it below.`);
-    } catch (error: any) {
-      toast.showError(error.message || "Failed to send verification code");
-      console.error(error)
-    } finally {
-      setLoading(false)
-    }
-  }
+      if (error) throw error;
 
-  const handleVerifyOTP = async () => {
-    try {
-      setLoading(true)
+      // Check if the user has a phone number
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('phone_number, full_name')
+        .eq('id', authData.user.id)
+        .single();
 
-      // Verify OTP
-      if (!supabase) {
-        throw new Error("Supabase client is not initialized");
+      // Handle user not found in users table
+      if (userError && userError.code === 'PGRST116') {
+        // User exists in Auth but not in users table
+        // Redirect to profile page to complete profile
+        toast.showInfo('Please complete your profile to continue');
+
+        // Get as much user info as possible from Auth
+        const { data: authUser } = await supabase.auth.getUser();
+        const userMetadata = authUser?.user?.user_metadata || {};
+
+        setTimeout(() => {
+          router.replace({
+            pathname: '/(auth)/signup/profile',
+            params: {
+              userId: authData.user.id,
+              email: data.email,
+              firstName: userMetadata.first_name || userMetadata.given_name || '',
+              lastName: userMetadata.last_name || userMetadata.family_name || '',
+              fullName: userMetadata.full_name || authData.user.user_metadata?.full_name || '',
+              phoneNumber: userMetadata.phone || '',
+              fromLogin: 'true'
+            }
+          });
+        }, 1000);
+        return;
+      } else if (userError) {
+        // Other database errors
+        console.error('Error fetching user profile:', userError);
+        toast.showError('Error verifying user information');
+        throw userError;
       }
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: formatPhoneNumber(control._formValues.phone),
-        token: otpValue,
-        type: 'sms'
-      })
 
-      if (error) throw error
+      // If phone number is missing, redirect to profile page
+      if (!userData?.phone_number) {
+        toast.showInfo('Please complete your profile information');
 
-      // If successful, user is now logged in
-      console.log('User logged in:', data)
-      toast.showSuccess("You've successfully logged in!");
+        // Navigate to profile page with user ID and any existing data
+        setTimeout(() => {
+          router.replace({
+            pathname: '/(auth)/signup/profile',
+            params: {
+              userId: authData.user.id,
+              email: data.email,
+              fullName: userData.full_name || '',
+              phoneNumber: '',
+              fromLogin: 'true'
+            }
+          });
+        }, 1000);
 
-      // Navigate after a brief delay to allow toast to be seen
+        return;
+      }
+
+      toast.showSuccess('Successfully logged in');
+
+      // Navigate after a brief delay
       setTimeout(() => {
         router.replace('/(app)');
       }, 1000);
 
     } catch (error: any) {
-      toast.showError(error.message || "Invalid verification code");
-      console.error(error)
+      console.error('Login error:', error);
+      toast.showError(error.message || 'Failed to login. Please check your credentials.');
     } finally {
-      setLoading(false)
+      setIsLoading(false);
     }
-  }
+  });
 
-  // Helper function to ensure phone number is properly formatted with Nigerian country code
-  const formatPhoneNumber = (phone: string): string => {
-    // Remove any non-digit characters
-    const digits = phone.replace(/\D/g, '')
+  // Handle Google Sign In
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsGoogleLoading(true);
 
-    // Handle Nigerian numbers
-    if (digits.startsWith('0') && digits.length === 11) {
-      // Convert format like 0803... to +2348...
-      return `+234${digits.substring(1)}`
+      // Get app scheme
+      const scheme = Constants.expoConfig?.scheme || 'veat';
+
+      // Create a proper redirect URL using the app scheme
+      const redirectUrl = `${scheme}://auth/callback`;
+
+      // Start OAuth flow with Supabase
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+          queryParams: {
+            prompt: 'consent',
+            access_type: 'offline'
+          }
+        }
+      });
+
+      if (error) {
+        toast.showError(error.message || 'Failed to initialize Google sign in');
+        throw error;
+      }
+
+      if (!data?.url) {
+        toast.showError('No authentication URL returned from Supabase');
+        throw new Error('No authentication URL returned from Supabase');
+      }
+
+      // Open auth session in browser
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectUrl,
+        { showInRecents: true }
+      );
+
+      if (result.type === 'success' && result.url) {
+        // Extract tokens from URL
+        let accessToken = '';
+        let refreshToken = '';
+
+        if (result.url.includes('#')) {
+          const hashPart = result.url.split('#')[1];
+          const hashParams = new URLSearchParams(hashPart);
+          accessToken = hashParams.get('access_token') || '';
+          refreshToken = hashParams.get('refresh_token') || '';
+        }
+
+        if (accessToken) {
+          // Set the session with the tokens
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            toast.showError(error.message || 'Failed to set session');
+            throw error;
+          }
+
+          // Get user details
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+
+          if (userError) {
+            toast.showError(userError.message || 'Failed to fetch user data');
+            throw userError;
+          }
+
+          if (userData?.user) {
+            // Check if user exists in the users table with a phone number
+            const { data: profileData, error: profileError } = await supabase
+              .from('users')
+              .select('phone_number, full_name')
+              .eq('id', userData.user.id)
+              .single();
+
+            // Handle user not found in users table
+            if (profileError && profileError.code === 'PGRST116') {
+              // User exists in Auth but not in users table
+              // Redirect to profile page to complete profile
+              toast.showInfo('Please complete your profile to continue');
+
+              // Extract any available user data from Google auth
+              const userMetadata = userData.user.user_metadata || {};
+              const fullName = userMetadata.full_name || '';
+              // Often Google provides name parts separately
+              const firstName = userMetadata.first_name || userMetadata.given_name || '';
+              const lastName = userMetadata.last_name || userMetadata.family_name || '';
+              const phoneNumber = userMetadata.phone || '';
+
+              setTimeout(() => {
+                router.replace({
+                  pathname: '/(auth)/signup/profile',
+                  params: {
+                    userId: userData.user.id,
+                    email: userData.user.email,
+                    firstName,
+                    lastName,
+                    fullName,
+                    phoneNumber,
+                    fromLogin: 'true'
+                  }
+                });
+              }, 1000);
+              return;
+            } else if (profileError) {
+              // Other database errors
+              console.error('Error fetching user profile:', profileError);
+              toast.showError('Error verifying user information');
+              throw profileError;
+            }
+
+            // If phone number is missing, redirect to profile page
+            if (!profileData.phone_number) {
+              toast.showInfo('Please complete your profile information');
+
+              // Navigate to profile page with user details including any existing data
+              setTimeout(() => {
+                router.replace({
+                  pathname: '/(auth)/signup/profile',
+                  params: {
+                    userId: userData.user.id,
+                    email: userData.user.email,
+                    fullName: profileData.full_name || '',
+                    phoneNumber: '',
+                    fromLogin: 'true'
+                  }
+                });
+              }, 1000);
+
+              return;
+            }
+
+            toast.showSuccess('Successfully signed in with Google');
+
+            // Navigate to app home
+            setTimeout(() => {
+              router.replace('/(app)');
+            }, 1000);
+          }
+        } else {
+          toast.showError('Could not authenticate with Google. Please try again.');
+        }
+      } else {
+        toast.showError('Google sign-in was cancelled');
+      }
+    } catch (error: any) {
+      console.error('Google signin error:', error);
+      toast.showError(error.message || 'Failed to sign in with Google');
+    } finally {
+      setIsGoogleLoading(false);
     }
-
-    // If they entered without leading 0 (e.g. 803...)
-    if (!digits.startsWith('0') && !digits.startsWith('234') && digits.length === 10) {
-      return `+234${digits}`
-    }
-
-    // If they entered 234... without +
-    if (digits.startsWith('234') && !phone.startsWith('+')) {
-      return `+${digits}`
-    }
-
-    // Already in international format with +
-    if (phone.startsWith('+')) {
-      return phone
-    }
-
-    // Default case - prepend +234 if not already included
-    if (!digits.startsWith('234')) {
-      return `+234${digits}`
-    }
-
-    return phone
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollView}>
-          <Image
-            source={{ uri: 'https://via.placeholder.com/150' }} // Replace with your app logo
-            style={styles.logo}
+    <AuthLayout>
+      <Text className="text-tc-primary text-2xl font-medium mb-6">Log in</Text>
+
+      <FormProvider {...methods}>
+        <View className="mb-4">
+          <Input
+            name="email"
+            label="Email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            rules={['required', 'email']}
           />
+        </View>
 
-          <MotiView
-            from={{ opacity: 0, translateY: 20 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ delay: 200, type: 'timing' }}
-            style={styles.formContainer}
-          >
-            <Text style={styles.headerText}>Welcome!</Text>
-            <Text style={styles.subHeaderText}>
-              {otpSent
-                ? "Enter the verification code sent to your phone"
-                : "Sign in with your Nigerian mobile number"
-              }
-            </Text>
+        <View className="mb-2">
+          <Input
+            name="password"
+            label="Password"
+            secureTextEntry
+            rules={['required']}
+          />
+        </View>
 
-            {!otpSent ? (
-              <>
-                <View style={styles.phoneInputContainer}>
-                  <View style={styles.countryCode}>
-                    <Text style={styles.countryCodeText}>+234</Text>
-                  </View>
-                  <Controller
-                    control={control}
-                    rules={{
-                      required: "Phone number is required",
-                      pattern: {
-                        value: /^[0-9]{10,11}$/,
-                        message: "Please enter a valid Nigerian phone number"
-                      }
-                    }}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <TextInput
-                        style={styles.phoneInput}
-                        onBlur={onBlur}
-                        onChangeText={(text) => {
-                          // Remove the country code if user pastes a full number
-                          if (text.startsWith('+234')) {
-                            onChange(text.substring(4))
-                          } else if (text.startsWith('234')) {
-                            onChange(text.substring(3))
-                          } else if (text.startsWith('0')) {
-                            onChange(text.substring(1))
-                          } else {
-                            onChange(text)
-                          }
-                        }}
-                        value={value}
-                        placeholder="8012345678"
-                        keyboardType="phone-pad"
-                        placeholderTextColor="#888"
-                        maxLength={11}
-                      />
-                    )}
-                    name="phone"
-                  />
-                </View>
-                {errors.phone && <Text style={styles.errorText}>{errors.phone.message}</Text>}
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/forgot-password')}
+          className="mt-2 self-end"
+        >
+          <Text weight="medium" className="text-primary-main text-sm">
+            Forgot Password?
+          </Text>
+        </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={handleSubmit(handleSendOTP)}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.buttonText}>Send Verification Code</Text>
-                  )}
-                </TouchableOpacity>
+        <Button
+          onPress={handleLogin}
+          disabled={!isFormValid}
+          isLoading={isLoading}
+        >
+          Log in
+        </Button>
+      </FormProvider>
 
-                <Text style={styles.infoText}>
-                  We'll send a one-time password to verify your phone number
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.otpInfoText}>
-                  Enter the 6-digit code sent to your phone
-                </Text>
+      <View className="flex-row items-center my-6">
+        <View className="flex-1 h-px bg-gray-200" />
+        <Text weight="regular" className="mx-4 text-gray-500 text-sm">or</Text>
+        <View className="flex-1 h-px bg-gray-200" />
+      </View>
 
-                <View style={styles.otpContainer}>
-                  <TextInput
-                    style={styles.otpInput}
-                    onChangeText={setOtpValue}
-                    value={otpValue}
-                    placeholder="------"
-                    keyboardType="number-pad"
-                    placeholderTextColor="#888"
-                    maxLength={6}
-                    textAlign="center"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.button,
-                    otpValue.length !== 6 && styles.disabledButton
-                  ]}
-                  onPress={handleVerifyOTP}
-                  disabled={loading || otpValue.length !== 6}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.buttonText}>Verify & Login</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.resendButton}
-                  onPress={handleSubmit(handleSendOTP)}
-                  disabled={loading}
-                >
-                  <Text style={styles.resendButtonText}>
-                    Didn't receive code? Resend
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                By continuing, you agree to our{' '}
-                <Text style={styles.linkText}>Terms of Service</Text> and{' '}
-                <Text style={styles.linkText}>Privacy Policy</Text>
-              </Text>
-            </View>
-          </MotiView>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <Button
+        variant="outline"
+        onPress={handleGoogleSignIn}
+        isLoading={isGoogleLoading}
+        icon={<GoogleIcon />}
+      >
+        Continue with Google
+      </Button>
 
       {/* Toast component */}
       <Toast
@@ -294,159 +366,8 @@ const Login = () => {
         onClose={toast.hideToast}
         type={toast.type}
       />
-    </SafeAreaView>
-  )
-}
+    </AuthLayout>
+  );
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FCFCFC',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  scrollView: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    resizeMode: 'contain',
-    marginBottom: 30,
-    borderRadius: 20,
-  },
-  formContainer: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  headerText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subHeaderText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    height: 56,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fafafa',
-  },
-  countryCode: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    borderRightWidth: 1,
-    borderRightColor: '#ddd',
-  },
-  countryCodeText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-  },
-  phoneInput: {
-    flex: 1,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#333',
-  },
-  input: {
-    height: 56,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
-    marginBottom: 16,
-  },
-  otpContainer: {
-    marginVertical: 16,
-  },
-  otpInput: {
-    height: 56,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 24,
-    fontWeight: '600',
-    letterSpacing: 8,
-    backgroundColor: '#fafafa',
-  },
-  otpInfoText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  button: {
-    height: 56,
-    backgroundColor: '#008751', // Nigerian green color
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  disabledButton: {
-    backgroundColor: '#a8d5c2', // Lighter green for disabled state
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  errorText: {
-    color: '#ef4444',
-    marginBottom: 8,
-  },
-  resendButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  resendButtonText: {
-    color: '#008751', // Nigerian green
-    fontSize: 16,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  footer: {
-    marginTop: 30,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-  },
-  linkText: {
-    color: '#008751', // Nigerian green
-    fontWeight: '500',
-  }
-})
-
-export default Login
+export default Login;

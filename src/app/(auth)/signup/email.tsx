@@ -44,6 +44,19 @@ export default function EmailSignUpScreen() {
                 return;
             }
 
+            // Check if email is already registered
+            const { data: existingUser, error: checkError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('email', data.email)
+                .single();
+
+            if (existingUser) {
+                toast.showError('This email is already registered. Please log in instead.');
+                router.replace('/(auth)/login');
+                return;
+            }
+
             // Generate OTP - Ensure exactly 4 digits (1000-9999)
             const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -164,8 +177,26 @@ export default function EmailSignUpScreen() {
                     }
 
                     if (userData?.user) {
+                        // Check if email is already registered
+                        const userEmail = userData.user.email;
+                        if (!userEmail) {
+                            toast.showError('Could not get email from Google account');
+                            return;
+                        }
+
+                        const { data: existingUser, error: checkError } = await supabase
+                            .from('users')
+                            .select('id')
+                            .eq('email', userEmail)
+                            .single();
+
+                        if (existingUser) {
+                            toast.showError('This email is already registered. Please log in instead.');
+                            router.replace('/(auth)/login');
+                            return;
+                        }
+
                         // Extract user metadata
-                        const email = userData.user.email;
                         const fullName = userData.user.user_metadata?.full_name || '';
                         const userId = userData.user.id;
 
@@ -180,7 +211,7 @@ export default function EmailSignUpScreen() {
                         router.replace({
                             pathname: '/(auth)/signup/profile',
                             params: {
-                                email,
+                                email: userEmail,
                                 userId,
                                 firstName,
                                 lastName
@@ -188,10 +219,10 @@ export default function EmailSignUpScreen() {
                         });
                     }
                 } else {
-                    toast.showWarning('Could not authenticate with Google. Please try again.');
+                    toast.showError('Google sign-up was cancelled');
                 }
             } else {
-                toast.showWarning('Google sign-up was cancelled');
+                toast.showError('Google sign-up was cancelled');
             }
         } catch (error: any) {
             console.error('Google signup error:', error);

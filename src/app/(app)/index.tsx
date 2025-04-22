@@ -1,10 +1,31 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { MotiView } from 'moti';
 import { useAuth } from '@/providers/AuthProvider';
+import { useHasLocation } from '@/services/location';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const { session, signOut } = useAuth();
+  const { isLoading, data: hasLocation } = useHasLocation();
+
+  // Redirect if no location is set
+  useEffect(() => {
+    if (!isLoading && !hasLocation) {
+      router.replace('/location');
+    }
+  }, [isLoading, hasLocation]);
+
+  // Show loading state while checking location
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -42,6 +63,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FCFCFC',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
   },
   content: {
     flex: 1,

@@ -1,33 +1,66 @@
 import { useState, useCallback } from 'react';
-import { ToastType } from '../components/ui/Toast';
+import { Ionicons } from '@expo/vector-icons';
+
+type ToastType = 'success' | 'error' | 'info';
 
 interface ToastState {
     message: string;
     isVisible: boolean;
-    icon?: React.ReactNode;
     type?: ToastType;
+    icon?: React.ReactNode;
 }
 
 export function useToast(duration = 3000) {
     const [toast, setToast] = useState<ToastState>({
         message: '',
         isVisible: false,
+        type: 'info',
         icon: undefined,
-        type: 'success',
     });
 
-    const showToast = useCallback((
-        message: string,
-        options?: {
-            icon?: React.ReactNode;
-            type?: ToastType;
-        }
-    ) => {
+    const showToast = useCallback((message: string, icon?: React.ReactNode) => {
+        setToast({ message, isVisible: true, type: 'info', icon });
+
+        // Auto hide after duration
+        setTimeout(() => {
+            setToast(prev => ({ ...prev, isVisible: false }));
+        }, duration);
+    }, [duration]);
+
+    const showSuccess = useCallback((message: string) => {
         setToast({
             message,
             isVisible: true,
-            icon: options?.icon,
-            type: options?.type || 'success'
+            type: 'success',
+            icon: undefined
+        });
+
+        // Auto hide after duration
+        setTimeout(() => {
+            setToast(prev => ({ ...prev, isVisible: false }));
+        }, duration);
+    }, [duration]);
+
+    const showError = useCallback((message: string) => {
+        setToast({
+            message,
+            isVisible: true,
+            type: 'error',
+            icon: undefined
+        });
+
+        // Auto hide after duration
+        setTimeout(() => {
+            setToast(prev => ({ ...prev, isVisible: false }));
+        }, duration);
+    }, [duration]);
+
+    const showInfo = useCallback((message: string) => {
+        setToast({
+            message,
+            isVisible: true,
+            type: 'info',
+            icon: undefined
         });
 
         // Auto hide after duration
@@ -40,25 +73,12 @@ export function useToast(duration = 3000) {
         setToast(prev => ({ ...prev, isVisible: false }));
     }, []);
 
-    // Convenience methods for different toast types
-    const showSuccess = useCallback((message: string, icon?: React.ReactNode) => {
-        showToast(message, { type: 'success', icon });
-    }, [showToast]);
-
-    const showWarning = useCallback((message: string, icon?: React.ReactNode) => {
-        showToast(message, { type: 'warning', icon });
-    }, [showToast]);
-
-    const showError = useCallback((message: string, icon?: React.ReactNode) => {
-        showToast(message, { type: 'error', icon });
-    }, [showToast]);
-
     return {
         ...toast,
         showToast,
-        hideToast,
         showSuccess,
-        showWarning,
-        showError
+        showError,
+        showInfo,
+        hideToast,
     };
 } 

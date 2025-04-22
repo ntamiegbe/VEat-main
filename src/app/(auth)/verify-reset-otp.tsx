@@ -7,15 +7,19 @@ import { ActivityIndicator } from 'react-native-paper';
 import { AuthLayout } from '@/components/layouts/auth-layout';
 import Toast from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
-import { Ionicons } from '@expo/vector-icons';
-import { sendVerificationEmail, verifyEmailOTP } from '@/lib/edgeFunctions';
+import { verifyPasswordResetOTP, requestPasswordResetOTP } from '@/lib/edgeFunctions';
 
 // OTP input length
 const OTP_LENGTH = 4;
 
-export default function VerifyScreen() {
+export default function VerifyResetOTPScreen() {
     // Get email from params
     const { email } = useLocalSearchParams<{ email: string }>();
+
+    if (!email) {
+        // Redirect back to forgot password if no email
+        router.replace('/(auth)/forgot-password');
+    }
 
     const toast = useToast();
 
@@ -27,49 +31,13 @@ export default function VerifyScreen() {
     const [verificationError, setVerificationError] = useState(false);
     const [resendCountdown, setResendCountdown] = useState(60);
 
-    // Initialize countdown timer and send initial OTP code when component mounts
+    // Start resend timer when component mounts
     useEffect(() => {
-        // Send initial verification code
-        sendInitialVerification();
-
-        // Start resend timer
         startResendTimer();
 
-        // Show initial toast for code sent
-        toast.showToast('Verification code sent to your email');
+        // Show initial toast about verification code
+        toast.showToast('Enter the verification code sent to your email');
     }, []);
-
-    // Function to send the initial verification code
-    const sendInitialVerification = async () => {
-        if (!email) return;
-
-        try {
-            const response = await sendVerificationEmail(email);
-            if (!response.success) {
-                toast.showError(response.message || 'Failed to send verification code');
-            }
-        } catch (error) {
-            console.error('Error sending verification code:', error);
-            toast.showError('Failed to send verification code');
-        }
-    };
-
-    // Function to proceed to profile page after successful verification
-    const proceedToProfile = () => {
-        if (!email) return;
-
-        setVerificationSuccess(true);
-        setVerificationError(false);
-        toast.showSuccess('Email verification successful');
-
-        // Navigate to profile completion after a brief delay
-        setTimeout(() => {
-            router.push({
-                pathname: '/(auth)/signup/profile',
-                params: { email }
-            });
-        }, 1000);
-    };
 
     // Function to start the resend countdown timer
     const startResendTimer = () => {
@@ -107,10 +75,23 @@ export default function VerifyScreen() {
             setVerificationError(false);
 
             try {
-                const response = await verifyEmailOTP(email, otpString);
+                const response = await verifyPasswordResetOTP(email, otpString);
 
                 if (response.success) {
-                    proceedToProfile();
+                    setVerificationSuccess(true);
+                    setVerificationError(false);
+                    toast.showSuccess('Verification successful');
+
+                    // Navigate to set new password screen after a brief delay
+                    setTimeout(() => {
+                        router.push({
+                            pathname: '/(auth)/new-password',
+                            params: {
+                                email: email,
+                                otp: otpString
+                            }
+                        });
+                    }, 1000);
                 } else {
                     setVerificationSuccess(false);
                     setVerificationError(true);
@@ -120,22 +101,11 @@ export default function VerifyScreen() {
                         toast.showError('Verification code has expired. Please request a new one.');
                     } else if (response.code === 'UNAUTHORIZED') {
                         toast.showError('Invalid verification code. Please try again.');
-                    } else if (response.code === 'NOT_FOUND') {
-                        toast.showError('No verification code found. Please request a new one.');
-                    } else if (response.code === 'RATE_LIMITED') {
-                        toast.showError('Too many attempts. Please try again later.');
-                    } else if (response.code === 'INVALID_INPUT') {
-                        toast.showError('Invalid verification code. Please check and try again.');
                     } else {
                         toast.showError(response.message || 'Verification failed. Please try again.');
                     }
-
-                    // If the code is not found or expired, offer to resend
-                    if (response.code === 'NOT_FOUND' || response.code === 'EXPIRED') {
-                        setResendCountdown(0); // Enable immediate resend
-                    }
                 }
-            } catch (error: any) {
+            } catch (error) {
                 console.error('Error verifying OTP:', error);
                 setVerificationSuccess(false);
                 setVerificationError(true);
@@ -154,7 +124,7 @@ export default function VerifyScreen() {
             setIsResending(true);
 
             try {
-                const response = await sendVerificationEmail(email);
+                const response = await requestPasswordResetOTP(email);
 
                 if (response.success) {
                     // Reset OTP fields
@@ -206,10 +176,10 @@ export default function VerifyScreen() {
 
     return (
         <AuthLayout>
-            <Text className="text-tc-primary text-[22px] font-medium mb-6">Enter code</Text>
+            <Text className="text-tc-primary text-[22px] font-medium mb-6">Verify your email</Text>
 
             <Text weight="regular" className="text-secondary-subtext text-sm mb-6">
-                Enter the 4-digit code sent to you at:
+                Enter the 4-digit code sent to:
                 {'\n'}<Text weight="bold">{email}</Text>
             </Text>
 
@@ -235,6 +205,14 @@ export default function VerifyScreen() {
             >
                 {renderResendButton()}
             </TouchableOpacity>
+
+            <View className="items-center pt-6">
+                <TouchableOpacity onPress={() => router.replace('/(auth)/forgot-password')}>
+                    <Text weight="medium" className="text-primary-main text-sm">
+                        Back to forgot password
+                    </Text>
+                </TouchableOpacity>
+            </View>
 
             {/* Toast Component */}
             <Toast
