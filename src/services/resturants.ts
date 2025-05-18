@@ -13,10 +13,20 @@ export function useRestaurants() {
     return useQuery({
         queryKey: [QUERY_KEYS.RESTAURANTS],
         queryFn: async () => {
+            // First try to get all restaurants without the is_active filter for debugging
+            const { data: allData, error: allError } = await supabase
+                .from('restaurants')
+                .select('*');
+
+            console.log('All restaurants (unfiltered):', allData);
+
+            // Now get only active restaurants as per original logic
             const { data, error } = await supabase
                 .from('restaurants')
                 .select('*')
                 .eq('is_active', true);
+
+            console.log('Active restaurants only:', data);
 
             if (error) throw error;
             return data;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import Text from '@/components/ui/Text';
@@ -8,7 +8,7 @@ import Toast from '@/components/ui/Toast';
 import { Ionicons } from '@expo/vector-icons';
 import LocationIcon from '@assets/icons/LocationIcon.svg';
 import { TextInput } from 'react-native';
-import { useLocations, useSetUserLocation, useHasLocation, type Location } from '@/services/location';
+import { useLocations, useSetUserLocation } from '@/services/location';
 
 export default function LocationScreen() {
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
@@ -17,15 +17,7 @@ export default function LocationScreen() {
 
     // Use location hooks
     const { data: locations = [], isLoading: isLoadingLocations } = useLocations();
-    const { data: hasLocation } = useHasLocation();
     const { mutate: setLocation, isPending: isSettingLocation } = useSetUserLocation();
-
-    // Redirect if location is already set
-    useEffect(() => {
-        if (hasLocation) {
-            router.replace("/(app)");
-        }
-    }, [hasLocation]);
 
     // Handle location selection
     const handleLocationSelect = (locationId: string) => {

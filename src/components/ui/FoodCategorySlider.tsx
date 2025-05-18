@@ -4,7 +4,6 @@ import {
     Text,
     TouchableOpacity,
     ScrollView,
-    ActivityIndicator,
 } from 'react-native';
 import { FoodCategory } from '@/services/foodCategories';
 import { MotiView } from 'moti';
@@ -52,14 +51,12 @@ const FoodCategoryItem: React.FC<FoodCategoryItemProps> = ({ item, index }) => {
 
 interface FoodCategorySliderProps {
     categories: FoodCategory[];
-    title?: string;
     location?: string;
     isLoading?: boolean;
 }
 
 const FoodCategorySlider: React.FC<FoodCategorySliderProps> = ({
     categories = [],
-    title = "Categories",
     location,
     isLoading = false
 }) => {
@@ -67,9 +64,6 @@ const FoodCategorySlider: React.FC<FoodCategorySliderProps> = ({
     if (isLoading) {
         return (
             <View className="mt-4 px-4">
-                <Text className="text-base font-semibold text-tc-primary mb-3">
-                    {title}
-                </Text>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}

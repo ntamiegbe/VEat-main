@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
-import { View, Text, SafeAreaView, StatusBar } from 'react-native';
+import { View, SafeAreaView, StatusBar, ScrollView } from 'react-native';
 import { useHasLocation, useUserLocation } from '@/services/location';
 import { router } from 'expo-router';
 import FoodCategorySlider from '@/components/ui/FoodCategorySlider';
 import { useFoodCategories } from '@/services/foodCategories';
+import LocationPicker from '@/components/ui/LocationPicker';
+import ExploreRestaurantsRow from '@/components/ui/ExploreRestaurantsRow';
 
 export default function HomeScreen() {
   const {
@@ -33,22 +35,27 @@ export default function HomeScreen() {
   }, [isLoadingLocation, hasLocation]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#FCFCFC]">
-      <StatusBar barStyle="dark-content" backgroundColor="#FCFCFC" />
+    <SafeAreaView className="flex-1 bg-white">
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <ScrollView>
+        {/* Header with location */}
+        <View className="px-4 pt-6 pb-2">
+          <LocationPicker
+            locationName={userLocation?.name}
+            isLoading={isLoadingUserLocation}
+          />
+        </View>
 
-      {/* Header with location */}
-      <View className="px-4 pt-6 pb-2">
-        <Text className="text-sm text-tc-secondary mt-1">
-          Delivering to <Text className="font-medium text-primary-main">{userLocation?.name}</Text>
-        </Text>
-      </View>
+        {/* Food Categories Slider */}
+        <FoodCategorySlider
+          categories={foodCategories || []}
+          location={userLocation?.name}
+          isLoading={isLoadingCategories}
+        />
 
-      {/* Food Categories Slider */}
-      <FoodCategorySlider
-        categories={foodCategories || []}
-        location={userLocation?.name}
-        isLoading={isLoadingCategories}
-      />
+        {/* Explore Restaurants Row */}
+        <ExploreRestaurantsRow title="Explore" maxItems={10} />
+      </ScrollView>
     </SafeAreaView>
   );
 }

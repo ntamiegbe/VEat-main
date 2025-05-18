@@ -62,6 +62,7 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bag-handle-outline" size={size} color={color} />
           ),
+          headerShown: false
         }}
       />
       <Tabs.Screen
@@ -71,6 +72,16 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
+          headerShown: false
+        }}
+      />
+
+      <Tabs.Screen
+        name="restaurant/[id]"
+        options={{
+          href: null, // This ensures this route doesn't appear in the tab bar
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
         }}
       />
     </Tabs>
