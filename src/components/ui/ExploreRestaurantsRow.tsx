@@ -4,38 +4,7 @@ import { router } from 'expo-router';
 import { MotiView } from 'moti';
 import { useRestaurants } from '@/services/resturants';
 import { MaterialIcons } from '@expo/vector-icons';
-
-// Generate random color based on restaurant name or ID
-const getColorFromName = (name: string, id: string): string => {
-    // Use either name or id to seed the color (ensures consistent color for the same restaurant)
-    const seed = (name || id).toLowerCase();
-    let hash = 0;
-
-    // Simple hash function
-    for (let i = 0; i < seed.length; i++) {
-        hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    // Convert to RGB color
-    const r = (hash & 0xFF) % 200 + 55; // Keep it bright (55-255)
-    const g = ((hash >> 8) & 0xFF) % 200 + 55;
-    const b = ((hash >> 16) & 0xFF) % 200 + 55;
-
-    return `rgb(${r}, ${g}, ${b})`;
-};
-
-// Get initials from a restaurant name
-const getInitials = (name: string): string => {
-    if (!name) return '?';
-
-    // Split by spaces and get first character of each word, max 2 characters
-    return name
-        .split(' ')
-        .map(word => word.charAt(0))
-        .join('')
-        .substring(0, 2)
-        .toUpperCase();
-};
+import { getBrandOrPastelColor, getInitials } from '@/utils/displayHelpers';
 
 interface RestaurantItem {
     id: string;
@@ -50,7 +19,7 @@ interface ExploreRestaurantsRowProps {
 }
 
 const RestaurantImagePlaceholder: React.FC<{ restaurant: RestaurantItem }> = ({ restaurant }) => {
-    const backgroundColor = getColorFromName(restaurant.name, restaurant.id);
+    const backgroundColor = getBrandOrPastelColor(restaurant.name, restaurant.id);
     const initials = getInitials(restaurant.name);
 
     return (
@@ -71,7 +40,7 @@ const RestaurantItem: React.FC<{ restaurant: RestaurantItem; index: number }> = 
             from={{ opacity: 0, translateY: 10 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ type: 'timing', duration: 300, delay: 50 + index * 50 }}
-            className="items-center mx-2"
+            className="items-center"
         >
             <TouchableOpacity
                 className="items-center"

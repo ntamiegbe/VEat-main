@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Database } from '../../../database.types';
+import { Restaurant } from '@/types/restaurant';
+import Text from '@/components/ui/Text';
 
 interface RestaurantInfoProps {
-    restaurant: Database['public']['Tables']['restaurants']['Row'];
+    restaurant: Restaurant;
 }
 
 /**
@@ -13,7 +14,7 @@ interface RestaurantInfoProps {
 export const RestaurantInfo = ({ restaurant }: RestaurantInfoProps) => (
     <View className="pt-16 px-5">
         {/* Categories */}
-        <Text className="text-gray-500 text-base">
+        <Text weight="regular" className="text-gray-500 text-base">
             {restaurant.cuisine_types ?
                 (Array.isArray(restaurant.cuisine_types)
                     ? restaurant.cuisine_types.join(', ')
@@ -22,7 +23,7 @@ export const RestaurantInfo = ({ restaurant }: RestaurantInfoProps) => (
         </Text>
 
         {/* Restaurant Name */}
-        <Text className="text-3xl font-bold text-black mt-1">
+        <Text weight="bold" className="text-3xl text-black mt-1">
             {restaurant.name}
         </Text>
 
@@ -31,29 +32,29 @@ export const RestaurantInfo = ({ restaurant }: RestaurantInfoProps) => (
             {restaurant.average_rating && (
                 <View className="flex-row items-center">
                     <Ionicons name="star" size={18} color="#000" />
-                    <Text className="ml-1 font-medium text-base">
+                    <Text weight="medium" className="ml-1 text-base">
                         {restaurant.average_rating.toFixed(1)}
                     </Text>
                 </View>
             )}
 
-            <Text className="mx-2 text-gray-400">•</Text>
+            <Text weight="regular" className="mx-2 text-gray-400">•</Text>
 
-            <Text className="text-base text-gray-700">
+            <Text weight="regular" className="text-base text-gray-700">
                 {restaurant.average_preparation_time ?
                     `${restaurant.average_preparation_time}-${Number(restaurant.average_preparation_time) + 10} min` :
                     '25-35 min'}
             </Text>
 
-            <Text className="mx-2 text-gray-400">•</Text>
+            <Text weight="regular" className="mx-2 text-gray-400">•</Text>
 
-            <Text className="text-base text-gray-700 flex-1" numberOfLines={1}>
+            <Text weight="regular" className="text-base text-gray-700 flex-1" numberOfLines={1}>
                 {restaurant.address || 'Agidingbi 101233, Ikeja, Lagos, Nigeria'}
             </Text>
         </View>
 
         {/* Opening Hours */}
-        <Text className="text-gray-700 mt-3">
+        <Text weight="regular" className="text-gray-700 mt-3">
             Opens today 9am
         </Text>
     </View>

@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, TouchableOpacity, Text } from 'react-native';
+import { ScrollView, TouchableOpacity } from 'react-native';
+import Text from '@/components/ui/Text';
 
 interface CategoryTabsProps {
     categories: string[];
@@ -24,7 +25,8 @@ export const CategoryTabs = ({ categories, activeCategory, setActiveCategory }: 
                 onPress={() => setActiveCategory(category)}
             >
                 <Text
-                    className={`text-lg ${activeCategory === category ? 'text-green-700 font-medium' : 'text-gray-500'}`}
+                    weight={activeCategory === category ? 'medium' : 'regular'}
+                    className={`text-lg ${activeCategory === category ? 'text-green-700' : 'text-gray-500'}`}
                 >
                     {category}
                 </Text>

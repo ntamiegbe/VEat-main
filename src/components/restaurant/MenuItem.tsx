@@ -1,16 +1,11 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Image, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { MenuItem as MenuItemType } from '@/types/restaurant';
+import Text from '@/components/ui/Text';
 
 type MenuItemProps = {
-    item?: {
-        id: string;
-        name: string | null;
-        description: string | null;
-        price: number | null;
-        image_url?: string | null;
-        [key: string]: any; // Allow additional properties
-    };
+    item?: MenuItemType;
     fallback?: boolean;
     onAddToCart: () => void;
 };
@@ -36,11 +31,11 @@ export const MenuItem: React.FC<MenuItemProps> = ({
     return (
         <View className="flex-row justify-between items-center mb-6 bg-white rounded-xl p-3 shadow-sm">
             <View className="flex-1 pr-4">
-                <Text className="text-lg font-bold mb-1">{displayItem.name || 'Unnamed Item'}</Text>
-                <Text className="text-gray-500 text-sm mb-2" numberOfLines={2}>
+                <Text weight="bold" className="text-lg mb-1">{displayItem.name || 'Unnamed Item'}</Text>
+                <Text weight="regular" className="text-gray-500 text-sm mb-2" numberOfLines={2}>
                     {displayItem.description || 'No description available'}
                 </Text>
-                <Text className="text-primary-600 font-bold">
+                <Text weight="bold" className="text-primary-600">
                     ${(displayItem.price || 0).toFixed(2)}
                 </Text>
             </View>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, Text } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { useRestaurantData } from '@/hooks/useRestaurantData';
@@ -9,6 +9,7 @@ import { RestaurantHeader } from '@/components/restaurant/RestaurantHeader';
 import { RestaurantInfo } from '@/components/restaurant/RestaurantInfo';
 import { CategoryTabs } from '@/components/restaurant/CategoryTabs';
 import { MenuItem } from '@/components/restaurant/MenuItem';
+import Text from '@/components/ui/Text';
 
 export default function RestaurantDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -70,7 +71,7 @@ export default function RestaurantDetailScreen() {
                     {/* Menu Items Section */}
                     <View className="px-5 mt-8">
                         {/* Active Category Name */}
-                        <Text className="text-2xl font-bold mb-5">
+                        <Text weight="bold" className="text-2xl mb-5">
                             {activeCategory}
                         </Text>
 

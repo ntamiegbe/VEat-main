@@ -6,6 +6,7 @@ import FoodCategorySlider from '@/components/ui/FoodCategorySlider';
 import { useFoodCategories } from '@/services/foodCategories';
 import LocationPicker from '@/components/ui/LocationPicker';
 import ExploreRestaurantsRow from '@/components/ui/ExploreRestaurantsRow';
+import { RestaurantSection } from '@/components/home/RestaurantSection';
 
 export default function HomeScreen() {
   const {
@@ -55,6 +56,12 @@ export default function HomeScreen() {
 
         {/* Explore Restaurants Row */}
         <ExploreRestaurantsRow title="Explore" maxItems={10} />
+
+        {/* All Restaurants Section */}
+        <RestaurantSection title="All Restaurants" />
+
+        {/* Bottom padding */}
+        <View className="h-20" />
       </ScrollView>
     </SafeAreaView>
   );

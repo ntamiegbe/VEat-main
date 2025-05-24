@@ -1,4 +1,5 @@
 import { useRestaurant, useMenuItems } from '@/services/resturants';
+import { Restaurant, MenuItem, MenuCategories } from '@/types/restaurant';
 
 /**
  * Custom hook for fetching and organizing restaurant data
@@ -28,11 +29,11 @@ export const useRestaurantData = (restaurantId: string) => {
         }
         acc[category].push(item);
         return acc;
-    }, {} as Record<string, typeof menuItems>);
+    }, {} as Record<string, MenuItem[]>);
 
     return {
-        restaurant,
-        menuItems,
+        restaurant: restaurant as Restaurant,
+        menuItems: menuItems as MenuItem[],
         menuCategories,
         isLoading: isLoadingRestaurant || isLoadingMenu,
         error: restaurantError || menuError

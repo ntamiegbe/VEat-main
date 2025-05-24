@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Image, Text, ActivityIndicator } from 'react-native';
+import { View, Image, Text } from 'react-native';
+import { ActivityIndicator } from 'react-native-paper';
 import { SvgUri } from 'react-native-svg';
 
 interface FoodCategoryImageProps {

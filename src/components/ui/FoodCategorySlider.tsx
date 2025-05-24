@@ -5,6 +5,7 @@ import {
     TouchableOpacity,
     ScrollView,
 } from 'react-native';
+import { ActivityIndicator } from 'react-native-paper';
 import { FoodCategory } from '@/services/foodCategories';
 import { MotiView } from 'moti';
 import { router } from 'expo-router';
