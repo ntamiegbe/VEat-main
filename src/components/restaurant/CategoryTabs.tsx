@@ -21,12 +21,12 @@ export const CategoryTabs = ({ categories, activeCategory, setActiveCategory }: 
         {categories.map((category) => (
             <TouchableOpacity
                 key={category}
-                className={`mr-6 pb-2 ${activeCategory === category ? 'border-b-2 border-green-700' : ''}`}
+                className={`mr-6 p-2 rounded-full ${activeCategory === category ? 'bg-accent-overlay' : ''}`}
                 onPress={() => setActiveCategory(category)}
             >
                 <Text
                     weight={activeCategory === category ? 'medium' : 'regular'}
-                    className={`text-lg ${activeCategory === category ? 'text-green-700' : 'text-gray-500'}`}
+                    className={`text-xs ${activeCategory === category ? 'text-primary-main' : 'text-secondary-caption'}`}
                 >
                     {category}
                 </Text>

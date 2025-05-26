@@ -33,26 +33,20 @@ export type Restaurant = {
 };
 
 /**
- * Menu item as returned from the database
+ * Menu item entity
  */
 export type MenuItem = {
     id: string;
     name: string;
-    description: string | null;
+    description: string;
     price: number;
-    image_url: string | null;
+    image_url: string;
+    original_price?: number;
+    category_id?: string;
     restaurant_id: string;
-    category_id: string | null;
-    is_available: boolean | null;
-    is_featured: boolean | null;
-    average_rating: number | null;
-    favorites_count: number | null;
-    food_category_id: string | null;
-    preparation_time: number | null;
-    total_orders: number | null;
-    customization_options: Json | null;
-    created_at: string | null;
-    updated_at: string | null;
+    is_available?: boolean;
+    created_at?: string;
+    updated_at?: string;
 };
 
 /**

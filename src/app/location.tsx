@@ -12,9 +12,9 @@ import { TextInput } from 'react-native';
 import { useLocations, useSetUserLocation } from '@/services/location';
 
 export default function LocationScreen() {
+    const toast = useToast();
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const toast = useToast();
 
     // Use location hooks
     const { data: locations = [], isLoading: isLoadingLocations } = useLocations();

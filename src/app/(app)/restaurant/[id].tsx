@@ -52,50 +52,46 @@ export default function RestaurantDetailScreen() {
                 <RestaurantHeader
                     bannerUrl={restaurant.banner_url}
                     logoUrl={restaurant.logo_url}
+                    restaurantName={restaurant.name}
+                    restaurantId={restaurant.id}
                 />
 
-                {/* Restaurant Details Card */}
-                <View className="bg-white rounded-t-3xl -mt-5">
-                    <RestaurantInfo restaurant={restaurant} />
+                {/* Restaurant Info Section */}
+                <RestaurantInfo restaurant={restaurant} />
 
-                    {/* Divider */}
-                    <View className="h-px bg-gray-200 mx-5 my-6" />
+                {/* Menu Categories Tabs */}
+                <CategoryTabs
+                    categories={categories}
+                    activeCategory={activeCategory}
+                    setActiveCategory={setActiveCategory}
+                />
 
-                    {/* Menu Categories Tabs */}
-                    <CategoryTabs
-                        categories={categories}
-                        activeCategory={activeCategory}
-                        setActiveCategory={setActiveCategory}
-                    />
+                {/* Menu Items Section */}
+                <View className="px-4">
+                    {/* Active Category Name */}
+                    <Text weight="regular" className="text-2xl text-black mt-6 mb-4">
+                        {activeCategory}
+                    </Text>
 
-                    {/* Menu Items Section */}
-                    <View className="px-5 mt-8">
-                        {/* Active Category Name */}
-                        <Text weight="bold" className="text-2xl mb-5">
-                            {activeCategory}
-                        </Text>
-
-                        {/* Menu Items for Active Category */}
-                        {activeCategory && menuCategories[activeCategory] ? (
-                            menuCategories[activeCategory].map((item) => (
-                                <MenuItem
-                                    key={item.id}
-                                    item={item}
-                                    onAddToCart={() => console.log('Add to cart:', item.name)}
-                                />
-                            ))
-                        ) : (
-                            // Sample menu item if no items in the category
+                    {/* Menu Items */}
+                    {activeCategory && menuCategories[activeCategory] ? (
+                        menuCategories[activeCategory].map((item) => (
                             <MenuItem
-                                fallback
-                                onAddToCart={() => console.log('Add to cart: Pinkberry Buddies')}
+                                key={item.id}
+                                item={item}
+                                onAddToCart={() => console.log('Add to cart:', item.name)}
                             />
-                        )}
-
-                        {/* Bottom padding */}
-                        <View className="h-20" />
-                    </View>
+                        ))
+                    ) : (
+                        <MenuItem
+                            fallback
+                            onAddToCart={() => console.log('Add to cart: Pinkberry Buddies')}
+                        />
+                    )}
                 </View>
+
+                {/* Bottom padding */}
+                <View className="h-20" />
             </ScrollView>
         );
     };
