@@ -13,99 +13,87 @@ import { AuthLayout } from '@/components/layouts/auth-layout';
 import { sendOTPEmail } from '@/lib/email';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/ui/Toast';
+import { AuthResponse, AuthError } from '@supabase/supabase-js';
 
 // Register for the authentication callback
 WebBrowser.maybeCompleteAuthSession();
 
+interface SignUpFormData {
+    email: string;
+    password: string;
+    confirmPassword: string;
+}
+
 export default function EmailSignUpScreen() {
-    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [state, setState] = useState({
+        isGoogleLoading: false,
+        isLoading: false
+    });
     const toast = useToast(4000); // 4 seconds duration
 
-    const methods = useForm({
+    const methods = useForm<SignUpFormData>({
         defaultValues: {
             email: '',
+            password: '',
+            confirmPassword: ''
         },
-        mode: 'onChange',
+        mode: 'onChange'
     });
 
-    const { handleSubmit, watch, formState } = methods;
-    const email = watch('email');
+    const { handleSubmit, formState, watch } = methods;
     const isFormValid = formState.isValid;
 
-    // Continue with email
-    const handleContinue = handleSubmit(async (data) => {
+    const handleSignUp = handleSubmit(async (data) => {
         try {
-            setIsLoading(true);
+            setState(prev => ({ ...prev, isLoading: true }));
 
-            // Validate email format
-            if (!/^\S+@\S+\.\S+$/.test(data.email)) {
-                toast.showError('Please enter a valid email address');
-                return;
-            }
+            // Check if email already exists
+            const { error: existingUserError } = await supabase.auth.signUp({
+                email: data.email,
+                password: data.password
+            });
 
-            // Check if email is already registered
-            const { data: existingUser, error: checkError } = await supabase
-                .from('users')
-                .select('id')
-                .eq('email', data.email)
-                .single();
-
-            if (existingUser) {
-                toast.showError('This email is already registered. Please log in instead.');
-                router.replace('/(auth)/login');
-                return;
-            }
-
-            // Generate OTP - Ensure exactly 4 digits (1000-9999)
-            const otp = Math.floor(1000 + Math.random() * 9000).toString();
-
-            try {
-                // Store OTP in Supabase for verification
-                const { error: otpError } = await supabase
-                    .from('email_verification')
-                    .insert({
-                        email: data.email,
-                        otp,
-                        created_at: new Date().toISOString(),
-                        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes expiry
-                    });
-
-                if (otpError) {
-                    console.error('OTP storage error:', otpError);
-                    toast.showError(otpError.message || 'Failed to store verification code');
-                    throw otpError;
+            if (existingUserError) {
+                if (existingUserError.message.includes('User already registered')) {
+                    toast.showError('This email is already registered. Please log in instead.');
+                    setTimeout(() => {
+                        router.replace('/(auth)/login');
+                    }, 2000);
+                    return;
                 }
+                throw existingUserError;
+            }
 
-                // Send OTP via Zeptomail
-                await sendOTPEmail(data.email);
+            // Send OTP email
+            const success = await sendOTPEmail(data.email);
+            if (!success) {
+                throw new Error('Failed to send verification code');
+            }
 
-                toast.showSuccess('Verification code sent to your email');
+            // Show success message
+            toast.showSuccess('Verification code sent to your email');
 
-                // Navigate to verification screen
+            // Navigate to verify screen
+            setTimeout(() => {
                 router.push({
                     pathname: '/(auth)/signup/verify',
                     params: {
                         email: data.email
                     }
                 });
-            } catch (emailError: any) {
-                console.error('Email signup error:', emailError);
-                toast.showError('Could not send verification code. Please try again later.');
-                throw emailError;
-            }
+            }, 1000);
+
         } catch (error: any) {
-            console.error('Email signup error:', error);
-            toast.showError(error.message || 'Something went wrong');
+            console.error('Signup error:', error);
+            toast.showError(error.message || 'Failed to sign up. Please try again.');
         } finally {
-            setIsLoading(false);
+            setState(prev => ({ ...prev, isLoading: false }));
         }
     });
 
-    // Handle Google Sign Up
     const handleGoogleSignUp = async () => {
         try {
-            setIsGoogleLoading(true);
+            setState(prev => ({ ...prev, isGoogleLoading: true }));
 
             // Get app scheme
             const scheme = Constants.expoConfig?.scheme || 'veat';
@@ -118,34 +106,27 @@ export default function EmailSignUpScreen() {
                 provider: 'google',
                 options: {
                     redirectTo: redirectUrl,
-                    skipBrowserRedirect: true,
                     queryParams: {
+                        access_type: 'offline',
                         prompt: 'consent',
-                        access_type: 'offline'
-                    }
-                }
+                    },
+                },
             });
 
-            if (error) {
-                toast.showError(error.message || 'Failed to initialize Google sign in');
-                throw error;
-            }
+            if (error) throw error;
 
             if (!data?.url) {
-                toast.showError('No authentication URL returned from Supabase');
-                throw new Error('No authentication URL returned from Supabase');
+                throw new Error('No OAuth URL returned');
             }
 
-            // Open auth session in browser - this is where the redirect happens
+            // Open browser for authentication
             const result = await WebBrowser.openAuthSessionAsync(
                 data.url,
-                redirectUrl,
-                { showInRecents: true }
+                redirectUrl
             );
 
-            // DIRECT HANDLING: Extract tokens directly from the result URL
             if (result.type === 'success' && result.url) {
-                // Parse tokens from URL (usually in hash fragment)
+                // Extract tokens from URL
                 let accessToken = '';
                 let refreshToken = '';
 
@@ -177,49 +158,74 @@ export default function EmailSignUpScreen() {
                     }
 
                     if (userData?.user) {
-                        // Check if email is already registered
-                        const userEmail = userData.user.email;
-                        if (!userEmail) {
-                            toast.showError('Could not get email from Google account');
-                            return;
-                        }
-
-                        const { data: existingUser, error: checkError } = await supabase
+                        // Check if user exists in the users table
+                        const { data: profileData, error: profileError } = await supabase
                             .from('users')
-                            .select('id')
-                            .eq('email', userEmail)
+                            .select('phone_number')
+                            .eq('id', userData.user.id)
                             .single();
 
-                        if (existingUser) {
-                            toast.showError('This email is already registered. Please log in instead.');
-                            router.replace('/(auth)/login');
+                        // Handle user not found in users table
+                        if (profileError && profileError.code === 'PGRST116') {
+                            // User exists in Auth but not in users table
+                            // Redirect to profile page to complete profile
+                            toast.showInfo('Please complete your profile to continue');
+
+                            // Extract any available user data from Google auth
+                            const userMetadata = userData.user.user_metadata || {};
+                            const fullName = userMetadata.full_name || '';
+                            // Often Google provides name parts separately
+                            const firstName = userMetadata.first_name || userMetadata.given_name || '';
+                            const lastName = userMetadata.last_name || userMetadata.family_name || '';
+                            const phoneNumber = userMetadata.phone || '';
+
+                            setTimeout(() => {
+                                router.replace({
+                                    pathname: '/(auth)/signup/profile',
+                                    params: {
+                                        userId: userData.user.id,
+                                        email: userData.user.email,
+                                        firstName,
+                                        lastName,
+                                        fullName,
+                                        phoneNumber
+                                    }
+                                });
+                            }, 1000);
                             return;
+                        } else if (profileError) {
+                            // Other database errors
+                            console.error('Error fetching user profile:', profileError);
+                            toast.showError('Error verifying user information');
+                            throw profileError;
                         }
 
-                        // Extract user metadata
-                        const fullName = userData.user.user_metadata?.full_name || '';
-                        const userId = userData.user.id;
+                        // If phone number is missing, redirect to profile page
+                        if (!profileData?.phone_number) {
+                            toast.showInfo('Please complete your profile information');
 
-                        // Split full name into first and last name
-                        const nameParts = fullName.split(' ');
-                        const firstName = nameParts[0] || '';
-                        const lastName = nameParts.slice(1).join(' ') || '';
+                            setTimeout(() => {
+                                router.replace({
+                                    pathname: '/(auth)/signup/profile',
+                                    params: {
+                                        userId: userData.user.id,
+                                        email: userData.user.email
+                                    }
+                                });
+                            }, 1000);
+
+                            return;
+                        }
 
                         toast.showSuccess('Successfully signed in with Google');
 
-                        // Redirect to profile completion with separated names
-                        router.replace({
-                            pathname: '/(auth)/signup/profile',
-                            params: {
-                                email: userEmail,
-                                userId,
-                                firstName,
-                                lastName
-                            }
-                        });
+                        // Navigate to app home
+                        setTimeout(() => {
+                            router.replace('/(app)');
+                        }, 1000);
                     }
                 } else {
-                    toast.showError('Google sign-up was cancelled');
+                    toast.showError('Could not authenticate with Google. Please try again.');
                 }
             } else {
                 toast.showError('Google sign-up was cancelled');
@@ -228,34 +234,51 @@ export default function EmailSignUpScreen() {
             console.error('Google signup error:', error);
             toast.showError(error.message || 'Failed to sign up with Google');
         } finally {
-            setIsGoogleLoading(false);
+            setState(prev => ({ ...prev, isGoogleLoading: false }));
         }
     };
 
     return (
         <AuthLayout>
-            <Text className="text-tc-primary text-[22px] font-medium mb-8">Create your account</Text>
+            <Text className="text-tc-primary text-2xl font-medium mb-6">Sign up</Text>
 
             <FormProvider {...methods}>
-                <View className="mb-8 z-10">
+                <View className="mb-4">
                     <Input
                         name="email"
                         label="Email"
-                        type="email"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         rules={['required', 'email']}
                     />
                 </View>
-            </FormProvider>
 
-            <Button
-                onPress={handleContinue}
-                disabled={!isFormValid}
-                isLoading={isLoading}
-            >
-                Continue
-            </Button>
+                <View className="mb-4">
+                    <Input
+                        name="password"
+                        label="Password"
+                        secureTextEntry
+                        rules={['required', 'password']}
+                    />
+                </View>
+
+                <View className="mb-4">
+                    <Input
+                        name="confirmPassword"
+                        label="Confirm Password"
+                        secureTextEntry
+                        rules={['required', 'confirmPassword']}
+                    />
+                </View>
+
+                <Button
+                    onPress={handleSignUp}
+                    disabled={!isFormValid}
+                    isLoading={state.isLoading}
+                >
+                    Continue
+                </Button>
+            </FormProvider>
 
             <View className="flex-row items-center my-6">
                 <View className="flex-1 h-px bg-gray-200" />
@@ -266,7 +289,7 @@ export default function EmailSignUpScreen() {
             <Button
                 variant="outline"
                 onPress={handleGoogleSignUp}
-                isLoading={isGoogleLoading}
+                isLoading={state.isGoogleLoading}
                 icon={<GoogleIcon />}
             >
                 Continue with Google
@@ -286,7 +309,6 @@ export default function EmailSignUpScreen() {
                 message={toast.message}
                 isVisible={toast.isVisible}
                 onClose={toast.hideToast}
-                type={toast.type}
             />
         </AuthLayout>
     );

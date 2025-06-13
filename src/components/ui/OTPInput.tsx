@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, Keyboard} from 'react-native';
+import { View, TextInput, TouchableOpacity, Keyboard } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 
 interface OTPInputProps {
@@ -79,7 +79,7 @@ const OTPInput: React.FC<OTPInputProps> = ({
                         style={{ width: 52, height: 52 }}
                     >
                         <TextInput
-                            ref={(ref) => (inputRefs.current[index] = ref)}
+                            ref={(ref) => { inputRefs.current[index] = ref; }}
                             style={{ width: 52, height: 52 }}
                             className={`border rounded-lg text-center text-2xl text-tc-primary
                                 ${currentIndex === index ? 'border-[#050505] border-[1px]' : 'border-secondary-stroke'}

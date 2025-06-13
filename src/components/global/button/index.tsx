@@ -5,7 +5,7 @@ import { cn } from '@/core/utils';
 import { ActivityIndicator } from 'react-native-paper';
 
 type ButtonProps = {
-  variant?: 'primary' | 'secondary' | 'outline' | 'plain';
+  variant?: 'primary' | 'secondary' | 'outline' | 'plain' | 'error';
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   onPress?: () => void;
@@ -39,6 +39,8 @@ const Button = ({
         return 'bg-transparent border border-secondary-stroke';
       case 'plain':
         return 'bg-transparent';
+      case 'error':
+        return 'bg-accent-error';
       default:
         return 'bg-white';
     }
@@ -58,6 +60,8 @@ const Button = ({
         return 'text-tc-primary font-';
       case 'plain':
         return 'text-black';
+      case 'error':
+        return 'text-[#C71700]';
       default:
         return 'text-black';
     }
@@ -95,6 +99,8 @@ const Button = ({
         return '#34AA87';
       case 'plain':
         return '#000000';
+      case 'error':
+        return '#C71700';
       default:
         return '#FFFFFF';
     }

@@ -12,24 +12,27 @@ import * as WebBrowser from 'expo-web-browser';
 import GoogleIcon from '@assets/icons/GoogleIcon.svg';
 import Constants from 'expo-constants';
 import { AuthLayout } from '@/components/layouts/auth-layout';
+import { makeRedirectUri } from 'expo-auth-session';
 
 // Register for OAuth callbacks
 WebBrowser.maybeCompleteAuthSession();
 
 const Login = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const toast = useToast(5000);
+  const [state, setState] = useState({
+    isLoading: false,
+    isGoogleLoading: false
+  });
+  const toast = useToast(4000);
+
   const methods = useForm({
     defaultValues: {
       email: '',
       password: ''
     },
-    mode: 'onChange',
+    mode: 'onChange'
   });
 
-  const { handleSubmit, formState } = methods;
-  const isFormValid = formState.isValid;
+  const { handleSubmit, formState: { isValid } } = methods;
 
   // Check if user is already logged in on component mount
   useEffect(() => {
@@ -52,259 +55,128 @@ const Login = () => {
     }
   };
 
-  // Handle email/password login
   const handleLogin = handleSubmit(async (data) => {
     try {
-      setIsLoading(true);
-
-      if (!supabase) {
-        throw new Error("Supabase client is not initialized");
-      }
-
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      setState(prev => ({ ...prev, isLoading: true }));
+      const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
-        password: data.password
+        password: data.password,
       });
 
       if (error) throw error;
 
-      // Check if the user has a phone number
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('phone_number, full_name')
-        .eq('id', authData.user.id)
-        .single();
-
-      // Handle user not found in users table
-      if (userError && userError.code === 'PGRST116') {
-        // User exists in Auth but not in users table
-        // Redirect to profile page to complete profile
-        toast.showInfo('Please complete your profile to continue');
-
-        // Get as much user info as possible from Auth
-        const { data: authUser } = await supabase.auth.getUser();
-        const userMetadata = authUser?.user?.user_metadata || {};
-
-        setTimeout(() => {
-          router.replace({
-            pathname: '/(auth)/signup/profile',
-            params: {
-              userId: authData.user.id,
-              email: data.email,
-              firstName: userMetadata.first_name || userMetadata.given_name || '',
-              lastName: userMetadata.last_name || userMetadata.family_name || '',
-              fullName: userMetadata.full_name || authData.user.user_metadata?.full_name || '',
-              phoneNumber: userMetadata.phone || '',
-              fromLogin: 'true'
-            }
-          });
-        }, 1000);
-        return;
-      } else if (userError) {
-        // Other database errors
-        console.error('Error fetching user profile:', userError);
-        toast.showError('Error verifying user information');
-        throw userError;
-      }
-
-      // If phone number is missing, redirect to profile page
-      if (!userData?.phone_number) {
-        toast.showInfo('Please complete your profile information');
-
-        // Navigate to profile page with user ID and any existing data
-        setTimeout(() => {
-          router.replace({
-            pathname: '/(auth)/signup/profile',
-            params: {
-              userId: authData.user.id,
-              email: data.email,
-              fullName: userData.full_name || '',
-              phoneNumber: '',
-              fromLogin: 'true'
-            }
-          });
-        }, 1000);
-
-        return;
-      }
-
       toast.showSuccess('Successfully logged in');
-
-      // Navigate after a brief delay
       setTimeout(() => {
         router.replace('/(app)');
       }, 1000);
-
     } catch (error: any) {
       console.error('Login error:', error);
-      toast.showError(error.message || 'Failed to login. Please check your credentials.');
+      toast.showError(error.message || 'Failed to log in');
     } finally {
-      setIsLoading(false);
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   });
 
-  // Handle Google Sign In
-  const handleGoogleSignIn = async () => {
+  const handleGoogleLogin = async () => {
     try {
-      setIsGoogleLoading(true);
+      setState(prev => ({ ...prev, isGoogleLoading: true }));
 
-      // Get app scheme
-      const scheme = Constants.expoConfig?.scheme || 'veat';
+      // Get the redirect URL using expo-auth-session
+      const redirectUrl = makeRedirectUri({
+        scheme: Array.isArray(Constants.expoConfig?.scheme) ? Constants.expoConfig.scheme[0] : Constants.expoConfig?.scheme || 'veat'
+      });
 
-      // Create a proper redirect URL using the app scheme
-      const redirectUrl = `${scheme}://auth/callback`;
-
-      // Start OAuth flow with Supabase
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
           skipBrowserRedirect: true,
           queryParams: {
-            prompt: 'consent',
-            access_type: 'offline'
+            access_type: 'offline',
+            prompt: 'consent'
           }
         }
       });
 
-      if (error) {
-        toast.showError(error.message || 'Failed to initialize Google sign in');
-        throw error;
-      }
+      if (error) throw error;
+      if (!data?.url) throw new Error('No OAuth URL returned');
 
-      if (!data?.url) {
-        toast.showError('No authentication URL returned from Supabase');
-        throw new Error('No authentication URL returned from Supabase');
-      }
-
-      // Open auth session in browser
-      const result = await WebBrowser.openAuthSessionAsync(
-        data.url,
-        redirectUrl,
-        { showInRecents: true }
-      );
+      // Open browser for authentication
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
       if (result.type === 'success' && result.url) {
-        // Extract tokens from URL
-        let accessToken = '';
-        let refreshToken = '';
+        // Parse the URL and extract tokens
+        const parsedUrl = new URL(result.url);
+        const hashParams = new URLSearchParams(parsedUrl.hash?.substring(1) || '');
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
 
-        if (result.url.includes('#')) {
-          const hashPart = result.url.split('#')[1];
-          const hashParams = new URLSearchParams(hashPart);
-          accessToken = hashParams.get('access_token') || '';
-          refreshToken = hashParams.get('refresh_token') || '';
+        if (!accessToken) {
+          throw new Error('No access token received');
         }
 
-        if (accessToken) {
-          // Set the session with the tokens
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
+        // Set the session
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || ''
+        });
 
-          if (error) {
-            toast.showError(error.message || 'Failed to set session');
-            throw error;
-          }
+        if (sessionError) throw sessionError;
 
-          // Get user details
-          const { data: userData, error: userError } = await supabase.auth.getUser();
+        // Get user profile
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
 
-          if (userError) {
-            toast.showError(userError.message || 'Failed to fetch user data');
-            throw userError;
-          }
+        if (userData?.user) {
+          // Check if user exists in users table
+          const { data: profileData, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userData.user.id)
+            .single();
 
-          if (userData?.user) {
-            // Check if user exists in the users table with a phone number
-            const { data: profileData, error: profileError } = await supabase
-              .from('users')
-              .select('phone_number, full_name')
-              .eq('id', userData.user.id)
-              .single();
-
-            // Handle user not found in users table
-            if (profileError && profileError.code === 'PGRST116') {
-              // User exists in Auth but not in users table
-              // Redirect to profile page to complete profile
-              toast.showInfo('Please complete your profile to continue');
-
-              // Extract any available user data from Google auth
-              const userMetadata = userData.user.user_metadata || {};
-              const fullName = userMetadata.full_name || '';
-              // Often Google provides name parts separately
-              const firstName = userMetadata.first_name || userMetadata.given_name || '';
-              const lastName = userMetadata.last_name || userMetadata.family_name || '';
-              const phoneNumber = userMetadata.phone || '';
-
-              setTimeout(() => {
-                router.replace({
-                  pathname: '/(auth)/signup/profile',
-                  params: {
-                    userId: userData.user.id,
-                    email: userData.user.email,
-                    firstName,
-                    lastName,
-                    fullName,
-                    phoneNumber,
-                    fromLogin: 'true'
-                  }
-                });
-              }, 1000);
-              return;
-            } else if (profileError) {
-              // Other database errors
-              console.error('Error fetching user profile:', profileError);
-              toast.showError('Error verifying user information');
-              throw profileError;
-            }
-
-            // If phone number is missing, redirect to profile page
-            if (!profileData.phone_number) {
-              toast.showInfo('Please complete your profile information');
-
-              // Navigate to profile page with user details including any existing data
-              setTimeout(() => {
-                router.replace({
-                  pathname: '/(auth)/signup/profile',
-                  params: {
-                    userId: userData.user.id,
-                    email: userData.user.email,
-                    fullName: profileData.full_name || '',
-                    phoneNumber: '',
-                    fromLogin: 'true'
-                  }
-                });
-              }, 1000);
-
-              return;
-            }
-
-            toast.showSuccess('Successfully signed in with Google');
-
-            // Navigate to app home
+          if (profileError && profileError.code === 'PGRST116') {
+            // User needs to complete profile
+            const userMetadata = userData.user.user_metadata || {};
+            toast.showInfo('Please complete your profile');
             setTimeout(() => {
-              router.replace('/(app)');
+              router.replace({
+                pathname: '/(auth)/signup/profile',
+                params: {
+                  userId: userData.user.id,
+                  email: userData.user.email || '',
+                  firstName: userMetadata.given_name || '',
+                  lastName: userMetadata.family_name || '',
+                  fullName: userMetadata.full_name || '',
+                  phoneNumber: userMetadata.phone || ''
+                }
+              });
             }, 1000);
+            return;
           }
-        } else {
-          toast.showError('Could not authenticate with Google. Please try again.');
+
+          if (profileError) throw profileError;
+
+          // Successful login
+          toast.showSuccess('Successfully logged in with Google');
+          setTimeout(() => {
+            router.replace('/(app)');
+          }, 1000);
         }
       } else {
         toast.showError('Google sign-in was cancelled');
       }
     } catch (error: any) {
-      console.error('Google signin error:', error);
-      toast.showError(error.message || 'Failed to sign in with Google');
+      console.error('Google login error:', error);
+      toast.showError(error.message || 'Failed to log in with Google');
     } finally {
-      setIsGoogleLoading(false);
+      setState(prev => ({ ...prev, isGoogleLoading: false }));
     }
   };
 
   return (
     <AuthLayout>
-      <Text className="text-tc-primary text-2xl font-medium mb-6">Log in</Text>
+      <Text className="text-tc-primary text-2xl font-medium mb-6">Welcome back</Text>
 
       <FormProvider {...methods}>
         <View className="mb-4">
@@ -317,30 +189,21 @@ const Login = () => {
           />
         </View>
 
-        <View className="mb-2">
+        <View className="mb-4">
           <Input
             name="password"
             label="Password"
             secureTextEntry
-            rules={['required']}
+            rules={['required', 'password']}
           />
         </View>
 
-        <TouchableOpacity
-          onPress={() => router.push('/(auth)/forgot-password')}
-          className="mt-2 self-end"
-        >
-          <Text weight="medium" className="text-primary-main text-sm">
-            Forgot Password?
-          </Text>
-        </TouchableOpacity>
-
         <Button
           onPress={handleLogin}
-          disabled={!isFormValid}
-          isLoading={isLoading}
+          disabled={!isValid}
+          isLoading={state.isLoading}
         >
-          Log in
+          Continue
         </Button>
       </FormProvider>
 
@@ -352,12 +215,25 @@ const Login = () => {
 
       <Button
         variant="outline"
-        onPress={handleGoogleSignIn}
-        isLoading={isGoogleLoading}
+        onPress={handleGoogleLogin}
+        isLoading={state.isGoogleLoading}
         icon={<GoogleIcon />}
       >
         Continue with Google
       </Button>
+
+      <View className="mt-4">
+        <Text weight="regular" className="text-secondary-caption text-sm">
+          Don't have an account?{' '}
+          <Text
+            weight="medium"
+            className="text-tc-dark underline underline-offset-8 border-b border-tc-dark pb-0.5"
+            onPress={() => router.push('/(auth)/signup/email')}
+          >
+            Sign up
+          </Text>
+        </Text>
+      </View>
 
       {/* Toast component */}
       <Toast

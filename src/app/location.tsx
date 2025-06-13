@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
+import { ActivityIndicator } from 'react-native-paper';
 import Text from '@/components/ui/Text';
 import Button from '@/components/global/button';
 import { useToast } from '@/hooks/useToast';
@@ -8,24 +9,16 @@ import Toast from '@/components/ui/Toast';
 import { Ionicons } from '@expo/vector-icons';
 import LocationIcon from '@assets/icons/LocationIcon.svg';
 import { TextInput } from 'react-native';
-import { useLocations, useSetUserLocation, useHasLocation, type Location } from '@/services/location';
+import { useLocations, useSetUserLocation } from '@/services/location';
 
 export default function LocationScreen() {
+    const toast = useToast();
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const toast = useToast();
 
     // Use location hooks
     const { data: locations = [], isLoading: isLoadingLocations } = useLocations();
-    const { data: hasLocation } = useHasLocation();
     const { mutate: setLocation, isPending: isSettingLocation } = useSetUserLocation();
-
-    // Redirect if location is already set
-    useEffect(() => {
-        if (hasLocation) {
-            router.replace("/(app)");
-        }
-    }, [hasLocation]);
 
     // Handle location selection
     const handleLocationSelect = (locationId: string) => {
@@ -85,28 +78,37 @@ export default function LocationScreen() {
             </View>
 
             <ScrollView className="flex-1 px-4">
-                {filteredLocations.map((location) => (
-                    <TouchableOpacity
-                        key={location.id}
-                        onPress={() => handleLocationSelect(location.id)}
-                        className="flex-row items-center py-4"
-                    >
-                        <LocationIcon />
-                        <View className="flex-1 ml-4">
-                            <Text className="text-tc-primary text-sm font-light">
-                                {location.name}
-                            </Text>
-                            {location.description && (
-                                <Text className="text-secondary-caption text-xs">
-                                    {location.description}
+                {isLoadingLocations ? (
+                    <View className="flex-1 justify-center items-center py-20">
+                        <ActivityIndicator size="large" color="#34AA87" />
+                        <Text weight="regular" className="text-secondary-subtext mt-4">
+                            Loading locations...
+                        </Text>
+                    </View>
+                ) : (
+                    filteredLocations.map((location) => (
+                        <TouchableOpacity
+                            key={location.id}
+                            onPress={() => handleLocationSelect(location.id)}
+                            className="flex-row items-center py-4"
+                        >
+                            <LocationIcon />
+                            <View className="flex-1 ml-4">
+                                <Text className="text-tc-primary text-sm font-light">
+                                    {location.name}
                                 </Text>
+                                {location.description && (
+                                    <Text className="text-secondary-caption text-xs">
+                                        {location.description}
+                                    </Text>
+                                )}
+                            </View>
+                            {selectedLocation === location.id && (
+                                <Ionicons name="checkmark" size={24} color="#34AA87" />
                             )}
-                        </View>
-                        {selectedLocation === location.id && (
-                            <Ionicons name="checkmark" size={24} color="#34AA87" />
-                        )}
-                    </TouchableOpacity>
-                ))}
+                        </TouchableOpacity>
+                    ))
+                )}
             </ScrollView>
 
             <View className="p-4 border-t border-gray-200">

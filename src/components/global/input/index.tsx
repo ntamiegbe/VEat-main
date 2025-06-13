@@ -7,6 +7,14 @@ import { ProgressBar, TextInput } from 'react-native-paper';
 
 import { cn, numberWithCommas } from '@/core/utils';
 
+export type ValidationRules = {
+  email: (value: string, label?: string) => ValidationResult;
+  required: (value: string, label?: string) => ValidationResult;
+  phone: (value: string, label?: string) => ValidationResult;
+  password: (value: string, label?: string) => ValidationResult;
+  confirmPassword: (value: string, label?: string) => ValidationResult;
+};
+
 export type InputProps = {
   label?: string;
   right?: React.ReactNode;
@@ -53,14 +61,6 @@ export type InputProps = {
 >;
 
 type ValidationResult = boolean | string;
-
-export type ValidationRules = {
-  email: (value: string, label?: string) => ValidationResult;
-  required: (value: string, label?: string) => ValidationResult;
-  phone: (value: string, label?: string) => ValidationResult;
-  password: (value: string, label?: string) => ValidationResult;
-  confirmPassword: (value: string, label?: string) => ValidationResult;
-};
 
 const Input = ({
   label,

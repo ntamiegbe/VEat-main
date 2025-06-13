@@ -50,14 +50,31 @@ export function useUserLocation() {
             if (userError) throw userError;
             if (!user) throw new Error('User not authenticated');
 
-            const { data, error } = await supabase
+            // Fetch the user's default_delivery_location_id
+            const { data: userData, error: userError2 } = await supabase
                 .from('users')
                 .select('default_delivery_location_id')
                 .eq('id', user.id)
                 .maybeSingle();
 
-            if (error) throw error;
-            return data as UserLocation | null;
+            if (userError2) throw userError2;
+            const locationId = userData?.default_delivery_location_id;
+            if (!locationId) return null;
+
+            // Fetch the location's name from the locations table
+            const { data: locationData, error: locationError } = await supabase
+                .from('locations')
+                .select('id, name')
+                .eq('id', locationId)
+                .maybeSingle();
+
+            if (locationError) throw locationError;
+            if (!locationData) return null;
+
+            return {
+                id: locationData.id,
+                name: locationData.name,
+            };
         },
     });
 }
@@ -134,5 +151,25 @@ export function useHasLocation() {
             if (error) throw error;
             return Boolean(data?.default_delivery_location_id);
         },
+    });
+}
+
+// Fetch a single location by ID
+export function useLocation(locationId: string | null) {
+    return useQuery({
+        queryKey: [QUERY_KEYS.LOCATIONS, locationId],
+        queryFn: async () => {
+            if (!locationId) return null;
+
+            const { data, error } = await supabase
+                .from('locations')
+                .select('*')
+                .eq('id', locationId)
+                .single();
+
+            if (error) throw error;
+            return data as Location;
+        },
+        enabled: !!locationId,
     });
 } 
