@@ -35,7 +35,9 @@ export const RestaurantHeader = ({
                     source={{ uri: bannerUrl }}
                     className="w-full h-full"
                     resizeMode="cover"
-                    onError={() => setBannerError(true)}
+                    onError={(error) => {
+                        setBannerError(true);
+                    }}
                 />
             ) : (
                 <View

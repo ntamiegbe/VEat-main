@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Image, TouchableOpacity } from 'react-native';
+import { View, Image, TouchableOpacity, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { MenuItem as MenuItemType } from '@/types/restaurant';
 import Text from '@/components/ui/Text';
@@ -15,6 +15,8 @@ export const MenuItem: React.FC<MenuItemProps> = ({
     fallback = false,
     onAddToCart,
 }) => {
+    const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
     // Default fallback data
     const fallbackItem = {
         id: 'fallback',
@@ -33,7 +35,26 @@ export const MenuItem: React.FC<MenuItemProps> = ({
 
     // Format price with Naira symbol
     const formatPrice = (price: number) => {
-        return `N${price.toLocaleString()}`;
+        return `₦${price.toLocaleString()}`;
+    };
+
+    const handlePress = () => {
+        // Animate the button
+        Animated.sequence([
+            Animated.timing(scaleAnim, {
+                toValue: 0.8,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
+        // Call the onAddToCart handler
+        onAddToCart();
     };
 
     return (
@@ -63,12 +84,21 @@ export const MenuItem: React.FC<MenuItemProps> = ({
                     className="w-24 h-24 rounded-lg"
                     resizeMode="cover"
                 />
-                <TouchableOpacity
-                    onPress={onAddToCart}
-                    className="absolute -bottom-3 -right-3 bg-white w-8 h-8 rounded-full items-center justify-center shadow-lg"
+                <Animated.View
+                    style={{
+                        transform: [{ scale: scaleAnim }],
+                        position: 'absolute',
+                        bottom: -12,
+                        right: -12,
+                    }}
                 >
-                    <Feather name="plus" size={20} color="#000" />
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={handlePress}
+                        className="bg-white w-8 h-8 rounded-full items-center justify-center shadow-lg"
+                    >
+                        <Feather name="plus" size={20} color="#000" />
+                    </TouchableOpacity>
+                </Animated.View>
             </View>
         </View>
     );

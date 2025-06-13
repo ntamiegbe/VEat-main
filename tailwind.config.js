@@ -24,13 +24,13 @@ module.exports = {
         },
         tc: {
           primary: '#020202',
-          dark: '#002C1F',  
+          dark: '#002C1F',
         },
         secondary: {
           subtext: '#5E5E5E',
           disabled: '#08080866',
           caption: "#6B707A",
-          divider: "#E5E5E5", 
+          divider: "#E5E5E5",
           icons: "#808080",
           stroke: "#D0D2D5"
         },
@@ -39,7 +39,7 @@ module.exports = {
           disabled: '#F1F2F4',
         },
         accent: {
-          error: "#FF0000",
+          error: "#FEF6F4",
           success: "#0E8345",
           warning: "#FFCE00",
           info: "#0C6FF9",

@@ -1,5 +1,7 @@
 import { useRestaurant, useMenuItems } from '@/services/resturants';
 import { Restaurant, MenuItem, MenuCategories } from '@/types/restaurant';
+import { useFoodCategories } from '@/services/foodCategories';
+import { useLocation } from '@/services/location';
 
 /**
  * Custom hook for fetching and organizing restaurant data
@@ -9,10 +11,18 @@ import { Restaurant, MenuItem, MenuCategories } from '@/types/restaurant';
 export const useRestaurantData = (restaurantId: string) => {
     // Fetch restaurant details
     const {
-        data: restaurant,
+        data: restaurantData,
         isLoading: isLoadingRestaurant,
         error: restaurantError
     } = useRestaurant(restaurantId);
+
+    // Fetch location data
+    const locationId = restaurantData?.location_id ?? null;
+    const {
+        data: location,
+        isLoading: isLoadingLocation,
+        error: locationError
+    } = useLocation(locationId);
 
     // Fetch menu items
     const {
@@ -21,21 +31,38 @@ export const useRestaurantData = (restaurantId: string) => {
         error: menuError
     } = useMenuItems(restaurantId);
 
-    // Group menu items by category
+    // Fetch food categories
+    const {
+        data: foodCategories = [],
+        isLoading: isLoadingCategories,
+        error: categoriesError
+    } = useFoodCategories();
+
+    // Group menu items by food category
     const menuCategories = menuItems.reduce((acc, item) => {
-        const category = item.category_id ? `Category ${item.category_id}` : 'Other';
-        if (!acc[category]) {
-            acc[category] = [];
+        // Get the food category name from the food categories list
+        const foodCategory = foodCategories.find(cat => cat.id === item.food_category_id);
+        const categoryName = foodCategory ? foodCategory.name : 'Other';
+
+        if (!acc[categoryName]) {
+            acc[categoryName] = [];
         }
-        acc[category].push(item);
+        acc[categoryName].push(item);
         return acc;
     }, {} as Record<string, MenuItem[]>);
 
+    // Combine restaurant data with location
+    const restaurant = restaurantData ? {
+        ...restaurantData,
+        location: location || undefined
+    } : undefined;
+
     return {
-        restaurant: restaurant as Restaurant,
+        restaurant: restaurant as Restaurant | undefined,
         menuItems: menuItems as MenuItem[],
         menuCategories,
-        isLoading: isLoadingRestaurant || isLoadingMenu,
-        error: restaurantError || menuError
+        foodCategories,
+        isLoading: isLoadingRestaurant || isLoadingMenu || isLoadingCategories || isLoadingLocation,
+        error: restaurantError || menuError || categoriesError || locationError
     };
 }; 

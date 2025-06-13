@@ -152,4 +152,24 @@ export function useHasLocation() {
             return Boolean(data?.default_delivery_location_id);
         },
     });
+}
+
+// Fetch a single location by ID
+export function useLocation(locationId: string | null) {
+    return useQuery({
+        queryKey: [QUERY_KEYS.LOCATIONS, locationId],
+        queryFn: async () => {
+            if (!locationId) return null;
+
+            const { data, error } = await supabase
+                .from('locations')
+                .select('*')
+                .eq('id', locationId)
+                .single();
+
+            if (error) throw error;
+            return data as Location;
+        },
+        enabled: !!locationId,
+    });
 } 

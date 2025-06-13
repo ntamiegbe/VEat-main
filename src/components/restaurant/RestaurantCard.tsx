@@ -45,7 +45,9 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({ restaurant }) =>
                     source={{ uri: restaurant.banner_url }}
                     className="w-full h-36"
                     resizeMode="cover"
-                    onError={() => setBannerError(true)}
+                    onError={(error) => {
+                        setBannerError(true);
+                    }}
                 />
             ) : (
                 <View

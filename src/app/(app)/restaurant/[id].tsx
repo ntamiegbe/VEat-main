@@ -10,25 +10,30 @@ import { RestaurantInfo } from '@/components/restaurant/RestaurantInfo';
 import { CategoryTabs } from '@/components/restaurant/CategoryTabs';
 import { MenuItem } from '@/components/restaurant/MenuItem';
 import Text from '@/components/ui/Text';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useCartStore } from '@/store/cartStore';
+import { MenuItem as MenuItemType } from '@/types/restaurant';
+import Toast from '@/components/ui/Toast';
 
 export default function RestaurantDetailScreen() {
     const { id } = useLocalSearchParams();
     const restaurantId = id as string;
     const [activeCategory, setActiveCategory] = React.useState('');
+    const [toastVisible, setToastVisible] = React.useState(false);
+    const addItem = useCartStore(state => state.addItem);
 
     const {
         restaurant,
         menuCategories,
+        foodCategories,
         isLoading,
         error
     } = useRestaurantData(restaurantId);
 
-    // Determine categories - must be called in every render
+    // Always use food categories for the tabs
     const categories = React.useMemo(() => {
-        return Object.keys(menuCategories).length > 0
-            ? Object.keys(menuCategories)
-            : ['Deals', 'Combos', 'Yoghurt', 'Toppings', 'Drinks'];
-    }, [menuCategories]);
+        return foodCategories?.map(cat => cat.name) || [];
+    }, [foodCategories]);
 
     // Set initial active category if not set
     React.useEffect(() => {
@@ -36,6 +41,33 @@ export default function RestaurantDetailScreen() {
             setActiveCategory(categories[0]);
         }
     }, [categories, activeCategory]);
+
+    // Handle adding item to cart
+    const handleAddToCart = (item: MenuItemType) => {
+        if (!restaurant) return;
+
+        addItem({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            restaurantId: restaurant.id,
+            restaurantName: restaurant.name,
+            restaurantLogo: restaurant.logo_url,
+        });
+
+        // Show toast
+        setToastVisible(true);
+    };
+
+    // Render empty category state
+    const renderEmptyCategory = () => (
+        <View className="items-center justify-center py-8">
+            <MaterialIcons name="restaurant" size={48} color="#ccc" />
+            <Text className="text-gray-500 mt-4 text-center px-4">
+                No items available in {activeCategory} category yet
+            </Text>
+        </View>
+    );
 
     // Prepare the content based on loading/error state
     const renderContent = () => {
@@ -59,6 +91,8 @@ export default function RestaurantDetailScreen() {
                 {/* Restaurant Info Section */}
                 <RestaurantInfo restaurant={restaurant} />
 
+                <View className="mx-4 mb-4 border-b border-secondary-divider" />
+
                 {/* Menu Categories Tabs */}
                 <CategoryTabs
                     categories={categories}
@@ -68,25 +102,17 @@ export default function RestaurantDetailScreen() {
 
                 {/* Menu Items Section */}
                 <View className="px-4">
-                    {/* Active Category Name */}
-                    <Text weight="regular" className="text-2xl text-black mt-6 mb-4">
-                        {activeCategory}
-                    </Text>
-
                     {/* Menu Items */}
-                    {activeCategory && menuCategories[activeCategory] ? (
+                    {activeCategory && menuCategories[activeCategory]?.length > 0 ? (
                         menuCategories[activeCategory].map((item) => (
                             <MenuItem
                                 key={item.id}
                                 item={item}
-                                onAddToCart={() => console.log('Add to cart:', item.name)}
+                                onAddToCart={() => handleAddToCart(item)}
                             />
                         ))
                     ) : (
-                        <MenuItem
-                            fallback
-                            onAddToCart={() => console.log('Add to cart: Pinkberry Buddies')}
-                        />
+                        renderEmptyCategory()
                     )}
                 </View>
 
@@ -99,6 +125,12 @@ export default function RestaurantDetailScreen() {
     return (
         <View className="flex-1 bg-white">
             {renderContent()}
+            <Toast
+                message="Item added to cart"
+                isVisible={toastVisible}
+                onClose={() => setToastVisible(false)}
+                type="success"
+            />
         </View>
     );
 } 

@@ -10,7 +10,7 @@ interface RestaurantItem {
     id: string;
     name: string;
     logo_url?: string | null;
-    [key: string]: any; // For other properties from the database
+    [key: string]: any;
 }
 
 interface ExploreRestaurantsRowProps {
@@ -40,7 +40,7 @@ const RestaurantItem: React.FC<{ restaurant: RestaurantItem; index: number }> = 
             from={{ opacity: 0, translateY: 10 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ type: 'timing', duration: 300, delay: 50 + index * 50 }}
-            className="items-center"
+            className="items-center mr-4"
         >
             <TouchableOpacity
                 className="items-center"

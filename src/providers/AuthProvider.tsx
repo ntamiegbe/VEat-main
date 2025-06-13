@@ -2,22 +2,6 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
-import { getUserProfile, updateUserProfile } from '@/lib/edgeFunctions';
-
-// User profile type
-interface UserProfile {
-    id: string;
-    email?: string;
-    full_name?: string;
-    phone_number?: string;
-    profile_image_url?: string;
-    user_type?: string;
-    default_delivery_location_id?: string;
-    birthday?: string;
-    is_phone_verified?: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
 
 type AuthContextType = {
     session: Session | null;

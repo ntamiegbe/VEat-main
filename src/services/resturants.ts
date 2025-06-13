@@ -8,6 +8,47 @@ export const QUERY_KEYS = {
     USER_PROFILE: 'user-profile',
 } as const;
 
+// Process image URLs from storage
+const processImageUrl = (imageUrl: string | null, type: 'banner' | 'logo'): string | null => {
+
+    if (!imageUrl) {
+        return null;
+    }
+
+    // If it's already a full Supabase storage URL, return it as is
+    if (imageUrl.includes('supabase.co/storage/v1/object/public')) {
+        return imageUrl;
+    }
+
+    // If it's already a full URL but not HTTPS, convert to HTTPS
+    if (imageUrl.startsWith('http:')) {
+        return imageUrl.replace('http:', 'https:');
+    }
+
+    // Handle storage paths
+    if (imageUrl.startsWith('storage/')) {
+        const storagePath = imageUrl.replace('storage/', '');
+        const url = supabase.storage
+            .from('restaurant-images')
+            .getPublicUrl(storagePath)
+            .data.publicUrl;
+        return url;
+    }
+
+    // For relative paths within the bucket
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('https')) {
+        const restaurantId = imageUrl.split('-')[0];
+        const bucketPath = `restaurants/${restaurantId}/${imageUrl}`;
+        const url = supabase.storage
+            .from('restaurant-images')
+            .getPublicUrl(bucketPath)
+            .data.publicUrl;
+        return url;
+    }
+
+    return imageUrl;
+};
+
 // Fetch restaurants
 export function useRestaurants() {
     return useQuery({
@@ -18,18 +59,22 @@ export function useRestaurants() {
                 .from('restaurants')
                 .select('*');
 
-            console.log('All restaurants (unfiltered):', allData);
-
             // Now get only active restaurants as per original logic
             const { data, error } = await supabase
                 .from('restaurants')
                 .select('*')
                 .eq('is_active', true);
 
-            console.log('Active restaurants only:', data);
-
             if (error) throw error;
-            return data;
+
+            // Process image URLs for each restaurant
+            const processedData = data.map(restaurant => ({
+                ...restaurant,
+                banner_url: processImageUrl(restaurant.banner_url, 'banner'),
+                logo_url: processImageUrl(restaurant.logo_url, 'logo')
+            }));
+
+            return processedData;
         },
     });
 }
@@ -42,14 +87,28 @@ export function useRestaurant(id: string) {
             const { data, error } = await supabase
                 .from('restaurants')
                 .select(`
-          *,
-          menu_items (*)
-        `)
+                    *,
+                    menu_items (*),
+                    location:locations (
+                        id,
+                        name,
+                        address,
+                        description,
+                        is_active,
+                        is_campus
+                    )
+                `)
                 .eq('id', id)
                 .single();
 
             if (error) throw error;
-            return data;
+
+            // Process image URLs
+            return {
+                ...data,
+                banner_url: processImageUrl(data.banner_url, 'banner'),
+                logo_url: processImageUrl(data.logo_url, 'logo')
+            };
         },
     });
 }
