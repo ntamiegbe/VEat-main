@@ -61,10 +61,10 @@ export function useUserLocation() {
             const locationId = userData?.default_delivery_location_id;
             if (!locationId) return null;
 
-            // Fetch the location's name from the locations table
+            // Fetch the location's details from the locations table
             const { data: locationData, error: locationError } = await supabase
                 .from('locations')
-                .select('id, name')
+                .select('id, name, description, address')
                 .eq('id', locationId)
                 .maybeSingle();
 
@@ -74,6 +74,8 @@ export function useUserLocation() {
             return {
                 id: locationData.id,
                 name: locationData.name,
+                description: locationData.description,
+                address: locationData.address
             };
         },
     });

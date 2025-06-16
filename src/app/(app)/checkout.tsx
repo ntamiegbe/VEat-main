@@ -1,17 +1,20 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { View, SafeAreaView, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import Text from '@/components/ui/Text';
-import { CheckoutSteps } from '@/components/orders/CheckoutSteps';
-import { Ionicons } from '@expo/vector-icons';
-import Button from '@/components/global/button';
 import { OrderReview } from '@/components/checkout/OrderReview';
 import { DeliveryAndPayment } from '@/components/checkout/DeliveryAndPayment';
+import Button from '@/components/global/button';
+import Text from '@/components/ui/Text';
+import { Ionicons } from '@expo/vector-icons';
+import { CheckoutSteps } from '@/components/orders/CheckoutSteps';
 
-type CheckoutStep = 'order' | 'delivery';
+type Step = 'order' | 'delivery';
 
-export default function CheckoutScreen() {
-    const [currentStep, setCurrentStep] = React.useState<CheckoutStep>('order');
+export default function Checkout() {
+    const [currentStep, setCurrentStep] = useState<Step>('order');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isValid, setIsValid] = useState(false);
+    const handlePaymentRef = useRef<() => Promise<void> | null>(null);
 
     const handleBack = () => {
         if (currentStep === 'delivery') {
@@ -19,7 +22,39 @@ export default function CheckoutScreen() {
             setCurrentStep('order');
         } else {
             // If on order review, go back to orders page
-            router.push('/(app)/orders');
+            router.replace({
+                pathname: '/(app)/orders'
+            });
+        }
+    };
+
+    const handleValidationChange = (valid: boolean, paymentHandler?: () => Promise<void>) => {
+        setIsValid(valid);
+        if (paymentHandler) {
+            handlePaymentRef.current = paymentHandler;
+        }
+    };
+
+    const handleContinue = async () => {
+        if (currentStep === 'order') {
+            setCurrentStep('delivery');
+        } else {
+            // Handle payment
+            console.log('Continue button clicked, checking payment handler');
+            if (handlePaymentRef.current) {
+                try {
+                    console.log('Payment handler found, starting payment...');
+                    setIsLoading(true);
+                    await handlePaymentRef.current();
+                } catch (error) {
+                    console.error('Payment execution error:', error);
+                    // Handle error (show toast, etc.)
+                } finally {
+                    setIsLoading(false);
+                }
+            } else {
+                console.log('No payment handler found');
+            }
         }
     };
 
@@ -43,7 +78,14 @@ export default function CheckoutScreen() {
             <CheckoutSteps currentStep={currentStep} />
 
             {/* Content */}
-            {currentStep === 'order' ? <OrderReview /> : <DeliveryAndPayment />}
+            {currentStep === 'order' ? (
+                <OrderReview />
+            ) : (
+                <DeliveryAndPayment
+                    onValidationChange={handleValidationChange}
+                    onPaymentStart={() => setIsLoading(true)}
+                />
+            )}
 
             {/* Bottom Buttons */}
             <View className="p-4 border-t border-secondary-divider flex-row">
@@ -52,21 +94,18 @@ export default function CheckoutScreen() {
                         variant="error"
                         onPress={handleBack}
                         className="flex-1 mr-3"
+                        disabled={isLoading}
                     >
                         Cancel
                     </Button>
                 )}
                 <View className={currentStep === 'delivery' ? 'flex-1' : 'flex-1'}>
                     <Button
-                        onPress={() => {
-                            if (currentStep === 'order') {
-                                setCurrentStep('delivery');
-                            } else {
-                                // Handle order confirmation
-                            }
-                        }}
+                        onPress={handleContinue}
+                        disabled={currentStep === 'delivery' && !isValid}
+                        isLoading={isLoading}
                     >
-                        {currentStep === 'order' ? 'Make payment' : 'Confirm order'}
+                        {currentStep === 'order' ? 'Continue' : 'Confirm order'}
                     </Button>
                 </View>
             </View>
