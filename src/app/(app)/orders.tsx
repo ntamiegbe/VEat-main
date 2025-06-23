@@ -1,19 +1,72 @@
-import React from 'react';
-import { SafeAreaView, View, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import React, { useEffect } from 'react';
+import { SafeAreaView, View, TouchableOpacity, FlatList } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import Text from '@/components/ui/Text';
 import { OrderTabs } from '@/components/orders/OrderTabs';
 import { EmptyState } from '@/components/orders/EmptyState';
 import { useCartStore } from '@/store/cartStore';
 import { RestaurantCartGroup } from '@/components/orders/RestaurantCartGroup';
 import Button from '@/components/global/button';
+import { Database } from '@/database.types';
+import { useGetCompletedOrders, useGetInProgressOrders } from '@/services/orders';
 
 type TabType = 'cart' | 'in-progress' | 'completed';
+type Order = Database['public']['Tables']['orders']['Row'];
+
+interface OrderWithRestaurant extends Order {
+  restaurants: {
+    id: string;
+    name: string;
+    address: string;
+    logo_url: string | null;
+    banner_url: string | null;
+    owner_id: string;
+    phone_number: string;
+    email: string | null;
+    description: string | null;
+    cuisine_types: string[] | null;
+    opening_hours: any;
+    is_active: boolean | null;
+    is_featured: boolean | null;
+    can_deliver: boolean | null;
+    delivery_radius: number | null;
+    minimum_order_amount: number | null;
+    average_rating: number | null;
+    total_orders: number | null;
+    average_preparation_time: number | null;
+    location_id: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+  } | null;
+}
 
 const OrdersScreen = () => {
   const [activeTab, setActiveTab] = React.useState<TabType>('cart');
   const { items, getRestaurantGroups, clearCart } = useCartStore();
   const restaurantGroups = getRestaurantGroups();
+  const { tab } = useLocalSearchParams<{ tab: TabType }>();
+
+  // Handle tab param to show correct tab
+  useEffect(() => {
+    if (tab && (tab === 'in-progress' || tab === 'completed' || tab === 'cart')) {
+      setActiveTab(tab);
+    }
+  }, [tab]);
+
+  // Fetch orders using the new service functions with enabled flag
+  const {
+    data: inProgressOrders,
+    isLoading: isLoadingInProgress
+  } = useGetInProgressOrders({
+    enabled: activeTab === 'in-progress'
+  });
+
+  const {
+    data: completedOrders,
+    isLoading: isLoadingCompleted
+  } = useGetCompletedOrders({
+    enabled: activeTab === 'completed'
+  });
 
   const renderCartContent = () => {
     if (items.length === 0) {
@@ -51,12 +104,79 @@ const OrdersScreen = () => {
     );
   };
 
+  const renderOrderCard = (order: OrderWithRestaurant) => (
+    <View className="border border-secondary-divider rounded-lg p-4 mb-4">
+      <View className="flex-row justify-between items-center mb-2">
+        <Text weight="medium" className="text-lg">
+          Order #{order.id.split('-')[0]}
+        </Text>
+        <Text className="text-secondary-text capitalize">
+          {order.order_status}
+        </Text>
+      </View>
+
+      <View className="mb-2">
+        <Text weight="medium">{order.restaurants?.name}</Text>
+        <Text className="text-secondary-text">
+          {order.items.length} items • ${order.total_amount}
+        </Text>
+      </View>
+
+      {order.delivery_address && (
+        <View>
+          <Text weight="medium">Delivery Address</Text>
+          <Text className="text-secondary-text">
+            {order.delivery_address.address}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
   const renderInProgressContent = () => {
-    return <EmptyState type="in-progress" />;
+    if (isLoadingInProgress) {
+      return (
+        <View className="flex-1 items-center justify-center">
+          <Text>Loading orders...</Text>
+        </View>
+      );
+    }
+
+    if (!inProgressOrders || inProgressOrders.length === 0) {
+      return <EmptyState type="in-progress" />;
+    }
+
+    return (
+      <FlatList
+        data={inProgressOrders as OrderWithRestaurant[]}
+        renderItem={({ item }) => renderOrderCard(item)}
+        keyExtractor={(item) => item.id}
+        contentContainerClassName="px-4 py-4"
+      />
+    );
   };
 
   const renderCompletedContent = () => {
-    return <EmptyState type="completed" />;
+    if (isLoadingCompleted) {
+      return (
+        <View className="flex-1 items-center justify-center">
+          <Text>Loading orders...</Text>
+        </View>
+      );
+    }
+
+    if (!completedOrders || completedOrders.length === 0) {
+      return <EmptyState type="completed" />;
+    }
+
+    return (
+      <FlatList
+        data={completedOrders as OrderWithRestaurant[]}
+        renderItem={({ item }) => renderOrderCard(item)}
+        keyExtractor={(item) => item.id}
+        contentContainerClassName="px-4 py-4"
+      />
+    );
   };
 
   const renderContent = () => {

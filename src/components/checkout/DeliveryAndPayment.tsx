@@ -6,6 +6,7 @@ import Text from '@/components/ui/Text';
 import { useCartStore } from '@/store/cartStore';
 import { useUserLocation } from '@/services/location';
 import { useInitiatePayment } from '@/services/payment';
+import { useCreateOrder } from '@/services/orders';
 import { supabase } from '@/lib/supabase';
 import EditIcon from '@assets/icons/EditIcon.svg';
 import PromoIcon from '@assets/icons/PromoIcon.svg';
@@ -19,13 +20,14 @@ export const DeliveryAndPayment: React.FC<DeliveryAndPaymentProps> = ({
     onValidationChange,
     onPaymentStart
 }) => {
-    const { items, getTotalAmount } = useCartStore();
+    const { items, getTotalAmount, clearCart } = useCartStore();
     const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
     const { data: userLocation } = useUserLocation();
     const totalAmount = getTotalAmount();
     const deliveryFee = process.env.EXPO_PUBLIC_DELIVERY_FEE!
     const [selectedPayment, setSelectedPayment] = useState<'online' | null>(null);
     const initPayment = useInitiatePayment();
+    const createOrder = useCreateOrder();
 
     // Update validation whenever location or payment changes
     React.useEffect(() => {
@@ -49,12 +51,30 @@ export const DeliveryAndPayment: React.FC<DeliveryAndPaymentProps> = ({
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError) throw userError;
             if (!user?.email) throw new Error('User email not found');
+            if (!userLocation) throw new Error('Delivery location not selected');
 
-            // Initialize payment
+            // Create order first
+            const order = await createOrder.mutateAsync({
+                items,
+                totalAmount,
+                deliveryFee: Number(deliveryFee),
+                deliveryAddress: {
+                    name: userLocation.name,
+                    address: userLocation.address || '',
+                    latitude: 0, // TODO: Add these to location type
+                    longitude: 0
+                }
+            });
+
+            // Initialize payment with order ID
             await initPayment.mutateAsync({
                 amount: totalAmount + Number(deliveryFee),
-                email: user.email
+                email: user.email,
+                orderId: order.id
             });
+
+            // Clear cart after successful payment initiation
+            clearCart();
         } catch (error) {
             console.error('Payment error:', error);
             // Handle error (show toast, etc.)

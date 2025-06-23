@@ -1,4 +1,4 @@
-import { Tables } from "./supabase";
+import { Tables } from "@/database.types";
 
 export type Restaurant = Tables<'restaurants'>;
 export type MenuItem = Tables<'menu_items'>;

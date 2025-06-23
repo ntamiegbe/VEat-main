@@ -40,10 +40,8 @@ export default function Checkout() {
             setCurrentStep('delivery');
         } else {
             // Handle payment
-            console.log('Continue button clicked, checking payment handler');
             if (handlePaymentRef.current) {
                 try {
-                    console.log('Payment handler found, starting payment...');
                     setIsLoading(true);
                     await handlePaymentRef.current();
                 } catch (error) {
