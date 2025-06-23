@@ -1,68 +1,90 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import Constants from 'expo-constants';
+import { supabase } from '@/lib/supabase';
+import { Database } from '@/database.types';
 
-// Remove the ! to allow for better error handling
-const PAYSTACK_PUBLIC_KEY = 'pk_test_e0a46400aa6beb20e033cc374d3e176db31ac80d';
+type OrderStatus = Database['public']['Enums']['order_status_type'];
 
+interface PaystackInitResponse {
+    status: boolean;
+    message: string;
+    data: {
+        authorization_url: string;
+        access_code: string;
+        reference: string;
+    };
+}
 
+interface InitiatePaymentInput {
+    amount: number;
+    email: string;
+    orderId: string;
+}
 
 export function useInitiatePayment() {
     return useMutation({
-        mutationFn: async ({ amount, email }: { amount: number; email: string }) => {
+        mutationFn: async ({ amount, email, orderId }: InitiatePaymentInput) => {
             try {
                 // Generate a unique reference
                 const reference = `veat_${Date.now()}_${Math.random().toString(36).substring(2)}`;
 
-                // Create the payment URL with inline parameters
-                const url = `https://checkout.paystack.com/` +
-                    `?key=${PAYSTACK_PUBLIC_KEY}` +
-                    `&email=${encodeURIComponent(email)}` +
-                    `&amount=${amount * 100}` + // Convert to kobo
-                    `&ref=${reference}` +
-                    `&callback_url=${encodeURIComponent(`${Constants.expoConfig?.scheme}://payment/callback`)}`;
+                // Update order status to payment_pending
+                const { error: updateError } = await supabase
+                    .from('orders')
+                    .update({
+                        order_status: 'payment_pending' as OrderStatus,
+                        payment_reference: reference
+                    })
+                    .eq('id', orderId);
 
-                // Open payment URL in browser
-                const result = await WebBrowser.openAuthSessionAsync(
-                    url,
-                    `${Constants.expoConfig?.scheme}://payment/callback`
-                );
-
-                if (result.type === 'success') {
-                    // Extract status and reference from URL
-                    const callbackUrl = new URL(result.url);
-                    const status = callbackUrl.searchParams.get('status');
-                    const trxref = callbackUrl.searchParams.get('trxref');
-
-                    if (!trxref) {
-                        throw new Error('No reference found in callback URL');
-                    }
-
-                    return {
-                        reference: trxref,
-                        status: status || 'failed'
-                    };
+                if (updateError) {
+                    throw new Error('Failed to update order status: ' + updateError.message);
                 }
 
-                throw new Error('Payment was cancelled or failed');
+                // Initialize payment through our Edge Function
+                const { data: initData, error: initError } = await supabase.functions.invoke<PaystackInitResponse>(
+                    'initialize-payment',
+                    {
+                        body: {
+                            email,
+                            amount,
+                            reference,
+                            orderId, // Pass orderId to track in webhook
+                        },
+                    }
+                );
+
+                if (initError || !initData) {
+                    // If payment initialization fails, revert order status
+                    await supabase
+                        .from('orders')
+                        .update({
+                            order_status: 'pending' as OrderStatus,
+                            payment_reference: null
+                        })
+                        .eq('id', orderId);
+
+                    throw new Error(initError?.message || 'Failed to initialize payment');
+                }
+
+                // Navigate to payment screen with WebView
+                router.push({
+                    pathname: '/(app)/payment',
+                    params: {
+                        paymentUrl: encodeURIComponent(initData.data.authorization_url),
+                        reference,
+                        orderId
+                    }
+                });
+
+                return {
+                    reference,
+                    status: 'pending'
+                };
             } catch (error) {
                 console.error('Payment error:', error);
                 throw error;
             }
-        },
-        onSuccess: (data) => {
-            if (data.status === 'success') {
-                // Redirect to in-progress orders
-                router.replace({
-                    pathname: '/(app)/orders'
-                });
-            } else {
-                // Payment failed, stay on checkout
-                router.replace({
-                    pathname: '/(app)/checkout'
-                });
-            }
-        },
+        }
     });
 } 
